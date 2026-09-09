@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cypress Groundwater &amp; Subsidence Explorer — Prototype v2</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --paper:#F6F3EC;
+    --ink:#1E2A26;
+    --ink-soft:#54615C;
+    --line:#D9D2C0;
+    --water:#2B6777;
+    --water-soft:#DCE9EA;
+    --ground:#AE5A28;
+    --ground-soft:#F2E1D3;
+    --creek:#3E6E4A;
+    --creek-soft:#E1EAE0;
+    --gap:#B7ADA0;
+    --card:#FFFEFB;
+    --live:#C0392B;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family: "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .app{
+    display:grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    height:100vh;
+  }
+  header{
+    padding:16px 24px 12px;
+    border-bottom:1px solid var(--line);
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  header h1{
+    margin:0;
+    font-size:1.3rem;
+    font-weight:600;
+    letter-spacing:0.01em;
+  }
+  header .sub{
+    font-family:"Courier New",monospace;
+    font-size:0.75rem;
+    color:var(--ink-soft);
+  }
+  .legend{
+    display:flex;
+    gap:16px;
+    font-family:"Courier New",monospace;
+    font-size:0.68rem;
+    color:var(--ink-soft);
+    align-items:center;
+    flex-wrap:wrap;
+    max-width:640px;
+  }
+  .legend .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px;}
+  .legend .tri{
+    display:inline-block;width:0;height:0;
+    border-left:6px solid transparent;
+    border-right:6px solid transparent;
+    border-bottom:10px solid var(--ground);
+    margin-right:5px;
+    vertical-align:-1px;
+  }
+  .legend .sq{
+    display:inline-block;width:9px;height:9px;
+    background:var(--creek);
+    margin-right:5px;
+    vertical-align:-1px;
+  }
+  main{
+    display:grid;
+    grid-template-columns: 1.5fr 1fr;
+    min-height:0;
+  }
+  #map{ height:100%; width:100%; background:#eee; }
+  aside{
+    border-left:1px solid var(--line);
+    overflow-y:auto;
+    padding:20px 22px 40px;
+    background:var(--card);
+  }
+  aside h2{
+    font-size:1.05rem;
+    margin:0 0 2px;
+  }
+  aside .kicker{
+    font-family:"Courier New",monospace;
+    font-size:0.72rem;
+    color:var(--ink-soft);
+    margin-bottom:16px;
+  }
+  .empty-state{
+    color:var(--ink-soft);
+    line-height:1.55;
+    font-size:0.95rem;
+  }
+  .empty-state b{color:var(--ink);}
+  table.meta{
+    width:100%;
+    border-collapse:collapse;
+    margin:14px 0 20px;
+    font-size:0.85rem;
+  }
+  table.meta td{
+    padding:5px 0;
+    border-bottom:1px solid var(--line);
+    vertical-align:top;
+  }
+  table.meta td:first-child{
+    color:var(--ink-soft);
+    width:42%;
+    font-family:"Courier New",monospace;
+    font-size:0.75rem;
+    padding-right:10px;
+  }
+  .chart-wrap{
+    background:var(--water-soft);
+    border-radius:2px;
+    padding:14px 10px 6px;
+    margin-bottom:14px;
+  }
+  .chart-wrap.ground{ background:var(--ground-soft); }
+  .badge-live{
+    display:inline-block;
+    background:var(--live);
+    color:#fff;
+    font-family:"Courier New",monospace;
+    font-size:0.65rem;
+    padding:2px 7px;
+    border-radius:2px;
+    margin-left:8px;
+    vertical-align:2px;
+    letter-spacing:0.03em;
+  }
+  .note{
+    font-size:0.78rem;
+    color:var(--ink-soft);
+    line-height:1.5;
+    border-left:2px solid var(--line);
+    padding-left:10px;
+    margin-top:10px;
+  }
+  .flood-flag{
+    background:#F7E3E0;
+    border-left:2px solid var(--live);
+    padding:10px 12px;
+    font-size:0.85rem;
+    margin:10px 0 14px;
+    line-height:1.5;
+  }
+  .no-data{
+    font-size:0.9rem;
+    color:var(--ink-soft);
+    font-style:italic;
+    padding:16px 0;
+  }
+  a.src{ color:var(--water); }
+  .leaflet-popup-content{ font-family:"Iowan Old Style",Georgia,serif; font-size:0.85rem; }
+  .leaflet-popup-content b{ display:block; margin-bottom:2px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <h1>Cypress Groundwater &amp; Subsidence Explorer</h1>
+      <div class="sub">prototype v2 · Harris County, TX · Chicot, Evangeline &amp; Jasper aquifers</div>
+    </div>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--water)"></span>well — data on record</span>
+      <span><span class="dot" style="background:var(--gap)"></span>well — no trend data</span>
+      <span><span class="tri"></span>subsidence station</span>
+      <span><span class="sq"></span>creek gage</span>
+    </div>
+  </header>
+  <main>
+    <div id="map"></div>
+    <aside id="panel">
+      <div class="empty-state">
+        <b>Click a marker to explore it.</b><br><br>
+        Blue circles: TWDB/USGS groundwater wells. Rust triangles: HGSD/UH subsidence GPS stations. Green squares: HCFCD Cypress Creek gages.<br><br>
+        One well (6503313) is a <b>live, currently-monitored USGS site</b>. Two creek gages carry a confirmed "Flooding Likely" status from Hurricane Harvey, August 31, 2017.
+      </div>
+    </aside>
+  </main>
+</div>
+
+<script>
+const wells = [
+  {id:"6503204", lat:29.970833, lon:-95.698334, aquifer:"Chicot, Lower", depth:72,
+   status:"1931–1985, ~90 readings (gap 1938–1980 not yet transcribed)", live:false,
+   readings:[
+    [1931.25,6.5],[1931.47,9.89],[1931.56,12.25],[1931.62,13.7],[1931.73,15.3],[1931.87,15.76],[1931.94,15.34],
+    [1932.03,13.65],[1932.11,9.85],[1932.20,7.7],[1932.30,8.88],[1932.40,10.4],[1932.48,12.2],[1932.56,13.88],
+    [1932.65,15.17],[1932.74,15.53],[1932.82,15.86],[1932.91,15.93],[1932.99,15.74],[1933.08,15.56],[1933.19,14.57],
+    [1933.36,13.78],[1933.48,15],[1933.89,16.76],[1934.31,10.62],[1934.91,15.76],[1935.41,7.72],[1935.63,12.7],
+    [1936.15,6.43],[1936.36,10.88],[1937.86,14.04],[1938.09,13.4],[1938.36,9.3],
+    [1980.06,56.48],[1980.50,57.2],[1980.73,62.15],[1981.04,58.45],[1981.44,58.6],[1981.67,62.14],
+    [1982.05,59.06],[1982.71,62.77],[1983.03,58.79],[1984.05,59.05],[1985.02,59.14]
+   ]},
+  {id:"6503206", lat:29.970833, lon:-95.698611, aquifer:"Chicot, Lower", depth:160,
+   status:"1957–1985, complete series (~40 readings)", live:false,
+   readings:[
+    [1957.45,36.6],[1957.70,42.73],[1958.72,43.02],[1959.13,37.11],[1959.45,37.76],[1959.73,41.05],[1959.99,37.49],
+    [1960.46,38.27],[1960.71,39.47],[1961.12,32.58],[1961.45,34.59],[1961.72,36.99],[1962.12,32.56],[1962.46,36.72],
+    [1962.75,41.5],[1963.16,36.09],[1963.76,46.89],[1963.97,41.84],[1964.18,39.59],[1964.46,44.44],[1964.73,46.07],
+    [1964.93,44.51],[1965.13,42.54],[1965.72,49.49],[1965.94,46.75],[1966.13,44.77],[1966.97,46.34],[1967.15,45.08],
+    [1967.47,49.58],[1967.95,48.77],[1968.11,48.31],[1968.46,50.75],[1968.96,50.19],[1969.16,49.57],[1969.75,52.76],
+    [1969.95,53.57],[1970.14,49.6],[1971.12,49.86],[1971.41,56.3],[1972.09,53.38],[1972.74,67.3],[1972.93,55.61],
+    [1973.12,54.07],[1973.44,53.81],[1973.70,56.02],[1973.93,54],[1974.11,52.64],[1974.47,54.06],[1974.70,56.22],
+    [1974.94,54],[1975.12,52.24],[1975.44,51.92],[1975.96,52.84],[1976.17,51.63],[1976.44,53.85],[1976.71,55.71],
+    [1976.92,55],[1977.12,52.99],[1977.41,53.25],[1977.70,56.16],[1978.15,54.64],[1978.41,56.3],[1979.04,57.75],
+    [1979.41,55.85],[1979.68,58.09],[1980.06,56.72],[1980.73,61.98],[1981.04,58.85],[1981.44,58.8],[1981.67,59.9],
+    [1982.05,59.07],[1982.71,61.52],[1983.03,58.91],[1984.05,59.38],[1985.02,59.23]
+   ]},
+  {id:"6503313", lat:29.974111, lon:-95.651111, aquifer:"Chicot", depth:618,
+   status:"ACTIVE USGS SITE · 2020–2026, ongoing", live:true, mixedDatum:true,
+   readings:[[2020.14,64.19],[2021.14,70.95],[2022.15,62.34],[2024.11,59.96],[2025.11,72.51],[2026.14,72.28]],
+   note:"USGS site 295826095390401. Depth to water also on file: 204.3 ft (2022) → 214.3 ft (2026), a 10-ft drop in 4 years. Values above are ft relative to NAVD88/NGVD29 datums (mixed — see raw record)."},
+  {id:"6503509", lat:29.957501, lon:-95.678611, aquifer:"Evangeline", depth:560,
+   status:"single reading, 1979", live:false, readings:[[1979.82,156]]},
+  {id:"6503208", lat:29.981944, lon:-95.667778, aquifer:"Evangeline", depth:944,
+   status:"single reading, 1980", live:false, readings:[[1980.10,188]]},
+  {id:"6503212", lat:29.981667, lon:-95.702501, aquifer:"Chicot", depth:568,
+   status:"single reading, 2001", live:false, readings:[[2001.16,175]]},
+  {id:"6503310", lat:29.981389, lon:-95.652501, aquifer:"Evangeline", depth:1105,
+   status:"two readings, 1993–94", live:false, readings:[[1993.78,323],[1994.10,319.37]]},
+  {id:"6503214", lat:29.969722, lon:-95.696944, aquifer:"Chicot", depth:525, status:"no water-level data on file", live:false, readings:[]},
+  {id:"6503207", lat:29.971111, lon:-95.676944, aquifer:"Chicot, Lower", depth:333, status:"no water-level data on file", live:false, readings:[]},
+  {id:"6503312", lat:29.983055, lon:-95.656389, aquifer:"Chicot", depth:447, status:"no water-level data on file", live:false, readings:[]},
+  {id:"6503306", lat:29.979167, lon:-95.645834, aquifer:"Evangeline", depth:503, status:"no water-level data on file", live:false, readings:[]},
+  {id:"6503302", lat:29.964709, lon:-95.658889, aquifer:"Chicot", depth:245, status:"single reading (domestic well)", live:false, readings:[]},
+  {id:"6503311", lat:29.964167, lon:-95.645278, aquifer:"Chicot", depth:590, status:"single reading, public supply", live:false, readings:[]},
+  {id:"6503303", lat:29.960556, lon:-95.630000, aquifer:"Chicot", depth:219, status:"single reading (domestic well)", live:false, readings:[]},
+  {id:"6503307", lat:29.963889, lon:-95.645556, aquifer:"Chicot &amp; Evangeline", depth:604, status:"no water-level data on file", live:false, readings:[]},
+  {id:"6503308", lat:29.962778, lon:-95.637222, aquifer:"Jasper (deep)", depth:2930, status:"no water-level data on file — third aquifer for context", live:false, readings:[]},
+  {id:"6503112", lat:29.997778, lon:-95.718611, aquifer:"Evangeline", depth:1145,
+   status:"ACTIVE USGS SITE · 2021–2025, ongoing", live:true, trend:"DECLINING — steady",
+   readings:[[2021.07,401.91],[2023.14,425.59],[2025.16,444.44]],
+   note:"USGS site 295952095430701. Depth to water below land surface. 42.5-ft decline in 4 years (~10.6 ft/yr) — one of the clearest, most consistent trends in this dataset."},
+  {id:"6503104", lat:29.986389, lon:-95.743334, aquifer:"Chicot &amp; Evangeline", depth:499,
+   status:"1938–2008, complete series (70 years, ~85 readings)", live:false, trend:"DECLINING — sharply accelerating after 2003",
+   readings:[
+    [1938.35,8],[1938.84,14.6],[1938.97,13.78],[1939.07,12.43],[1939.22,11.16],[1939.74,18.91],[1939.96,16.02],
+    [1940.14,14.71],[1940.77,21.49],[1940.92,16.8],[1941.16,12.39],[1941.26,11.5],[1941.39,10.8],[1941.52,10.44],
+    [1941.68,19.14],[1941.85,12.06],[1941.96,10.79],[1942.06,10],[1942.21,9.3],[1942.81,14.28],[1943.28,9.41],
+    [1943.86,16.68],[1944.23,8.2],[1944.78,17.67],[1945.21,8.15],[1945.82,17.93],[1946.24,9.73],[1947.23,10.41],
+    [1948.21,14.22],[1948.87,30.38],[1949.05,23.37],[1949.19,20.17],[1949.91,18.93],
+    [1950.20,13.91],[1950.90,20.32],[1951.25,17.07],[1951.87,23.6],[1952.20,18.75],[1952.89,27.47],[1953.25,21.97],
+    [1953.90,26.82],[1954.20,23.35],[1954.93,29.51],[1955.20,24.98],[1955.88,29.06],[1956.20,25.05],[1956.89,35.26],
+    [1957.20,31.13],[1957.91,30.82],[1958.21,26.62],[1958.92,32.96],[1959.19,29.47],[1959.88,33.54],[1960.18,28.5],
+    [1960.91,30.27],[1961.24,26.69],[1961.91,31.9],[1962.22,29.12],[1962.91,32.07],[1963.21,31.05],[1964.15,33.66],
+    [1964.88,39.83],[1965.19,35.33],[1965.86,41.48],[1966.18,35.76],[1966.90,38.99],[1967.18,37.98],[1967.91,42.55],
+    [1968.19,40.91],[1968.88,43.16],[1969.21,37.85],[1970.19,40.72],[1971.18,43.88],[1972.14,43.56],[1973.18,42.54],
+    [1974.17,42.5],[1975.14,42.66],[1976.15,44.62],[1977.15,41.42],[1977.84,47.72],[1978.14,43.69],[1978.85,48.11],
+    [1979.20,46.51],[1979.91,47.94],[1980.03,46.14],[1980.92,48.05],[1981.02,50.17],
+    [1981.88,49.96],[1982.06,48.87],[1982.85,51.53],[1983.03,50.97],[1983.76,52.85],[1984.10,52.02],[1986.12,43.3],
+    [1987.01,46.85],[1988.01,48.16],[1989.07,53.1],[1990.05,53.66],[1991.04,54.02],[1992.06,57.26],[1993.07,48.95],
+    [1995.09,47.98],[1996.01,52.31],[1997.02,52.59],[1998.03,49.54],[1999.02,53.1],[2000.03,52.85],[2001.02,52.05],
+    [2002.03,48.36],[2003.08,41.19],[2004.07,64.19],[2005.07,90.86],[2006.03,95.18],[2006.96,98.31],[2008.01,102.51]
+   ],
+   note:"Drilled 1938. Steady decline 1938–2003 (~0.6 ft/yr avg), then a sharp jump: 41 ft (2003) → 102.5 ft (2008) — roughly 12 ft/yr, more than 10x the earlier rate."},
+  {id:"6503113", lat:29.976667, lon:-95.728611, aquifer:"Evangeline", depth:576,
+   status:"ACTIVE USGS SITE · 2025–2026, just started", live:true, trend:"DECLINING — early data, ~8.8 ft in 1 year",
+   readings:[[2025.10,180.75],[2026.12,189.53]],
+   note:"USGS site 295836095434201. Drilled 2018, USGS began tracking it 2025. Only 2 readings so far — too early to confirm a rate, but direction is consistent with nearby wells."},
+  {id:"6059706", lat:30.015278, lon:-95.728056, aquifer:"Chicot &amp; Evangeline", depth:605,
+   status:"ACTIVE USGS SITE · 2021–2026, ongoing (north Cypress)", live:true, trend:"DECLINING — steady, moderate pace",
+   readings:[[2021.18,132.50],[2022.17,135.57],[2024.16,136.09],[2026.04,143.95]],
+   note:"USGS site 300055095434101. Depth to water below land surface. 11.5-ft decline over 5 years (~2.3 ft/yr) — slower than the other live wells but same direction. This site sits north of the main well cluster, near Grant Road."}
+];
+
+// Subsidence points are approximate for stations with full-chart lines below —
+// digitized by eye from official HGSD/University of Houston PNG charts.
+// Stations with "readings:[]" show real summary stats only (start year, total displacement, 2025 rate).
+const stations = [
+  {id:"P018", lat:29.965, lon:-95.678, since:2000, totalCm:-44.1, rate2025:1.88, note:"decelerating — peak sinking ~2007",
+   readings:[[2000,0],[2003,-6],[2005,-11],[2007,-17],[2009,-21],[2012,-25],[2015,-29],[2018,-33],[2021,-38],[2023,-41],[2026,-44]]},
+  {id:"AULT", lat:29.998, lon:-95.745, since:2015, totalCm:-14.7, rate2025:1.87, note:"accelerating in recent years",
+   readings:[[2015,0],[2017,-2],[2019,-4],[2021,-6.5],[2023,-9.5],[2025,-13],[2026,-14.7]]},
+  {id:"P048", lat:30.045, lon:-95.672, since:2007, totalCm:-20.3, rate2025:1.28, note:"summary stats only", readings:[]},
+  {id:"P099", lat:29.986, lon:-95.579, since:2018, totalCm:-5.1, rate2025:0.89, note:"summary stats only", readings:[]},
+  {id:"CFHS", lat:29.919, lon:-95.632, since:2015, totalCm:-16.3, rate2025:1.74, note:"summary stats only", readings:[]},
+  {id:"P007", lat:29.936, lon:-95.577, since:1999, totalCm:-68.6, rate2025:1.36, note:"summary stats only, longest nearby record", readings:[]},
+  {id:"P001", lat:29.912, lon:-95.617, since:1994, totalCm:-77.3, rate2025:1.07, note:"longest record in the area — 32 years", readings:[]},
+  {id:"P046", lat:30.030, lon:-95.600, since:2007, totalCm:-27.9, rate2025:1.40, note:"summary stats only", readings:[]},
+  {id:"P044", lat:29.880, lon:-95.687, since:2007, totalCm:-24.2, rate2025:1.57, note:"summary stats only", readings:[]},
+  {id:"P017", lat:30.091, lon:-95.615, since:2000, totalCm:-43.1, rate2025:1.51, note:"summary stats only", readings:[]},
+  {id:"TXCY", lat:30.096, lon:-95.626, since:2017, totalCm:-13.3, rate2025:1.74, note:"TxDOT-operated", readings:[]},
+  {id:"MRHK", lat:29.804, lon:-95.745, since:2014, totalCm:-23.0, rate2025:2.38, note:"one of the fastest-sinking stations in the region", readings:[]}
+];
+
+const creeks = [
+  {id:"1150", name:"Cypress Creek @ SH 249", lat:29.9857, lon:-95.5699, level:92.48, floodStage:117.0, harveyFlood:null},
+  {id:"1160", name:"Cypress Creek @ Grant Road", lat:29.9735, lon:-95.5985, level:102.5, floodStage:122.2, harveyFlood:null},
+  {id:"1165", name:"Cypress Creek @ Eldridge Pkwy N.", lat:29.9662, lon:-95.6073, level:103.07, floodStage:122.6, harveyFlood:"Flooding Likely"},
+  {id:"1170", name:"Cypress Creek @ Huffmeister Road", lat:29.9616, lon:-95.6312, level:110.38, floodStage:127.5, harveyFlood:"Flooding Likely"},
+  {id:"1175", name:"Cypress Creek @ US 290", lat:29.9569, lon:-95.6782, level:120.8, floodStage:136.4, harveyFlood:null},
+  {id:"1180", name:"Cypress Creek @ Katy-Hockley Road", lat:29.9504, lon:-95.8083, level:145.85, floodStage:null, harveyFlood:null}
+];
+
+const map = L.map('map', {scrollWheelZoom:true}).setView([29.975,-95.665],12.3);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  attribution:'&copy; OpenStreetMap contributors', maxZoom:18
+}).addTo(map);
+
+function wellIcon(hasData, isLive){
+  const color = isLive ? '#C0392B' : (hasData?'#2B6777':'#B7ADA0');
+  const ring = isLive ? '0 0 0 3px rgba(192,57,43,.25)' : '0 0 0 1px rgba(0,0,0,.25)';
+  return L.divIcon({
+    className:'',
+    html:`<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:${ring};"></div>`,
+    iconSize:[14,14], iconAnchor:[7,7]
+  });
+}
+function stationIcon(){
+  return L.divIcon({
+    className:'',
+    html:`<div style="width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:14px solid #AE5A28;filter:drop-shadow(0 0 1px rgba(0,0,0,.4));"></div>`,
+    iconSize:[16,14], iconAnchor:[8,12]
+  });
+}
+function creekIcon(flooded){
+  const c = flooded ? '#C0392B' : '#3E6E4A';
+  return L.divIcon({
+    className:'',
+    html:`<div style="width:12px;height:12px;background:${c};border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25);"></div>`,
+    iconSize:[12,12], iconAnchor:[6,6]
+  });
+}
+
+let chartInstance = null;
+
+function renderWellPanel(w){
+  const panel = document.getElementById('panel');
+  const has = w.readings.length > 1;
+  panel.innerHTML = `
+    <div class="kicker">GROUNDWATER WELL</div>
+    <h2>State Well ${w.id}${w.live?'<span class="badge-live">LIVE · USGS</span>':''}</h2>
+    <table class="meta">
+      <tr><td>Aquifer</td><td>${w.aquifer}</td></tr>
+      <tr><td>Well depth</td><td>${w.depth} ft</td></tr>
+      <tr><td>Coordinates</td><td>${w.lat.toFixed(4)}, ${w.lon.toFixed(4)}</td></tr>
+      <tr><td>Record</td><td>${w.status}</td></tr>
+      ${w.trend ? '<tr><td>Trend</td><td><b>'+w.trend+'</b></td></tr>' : ''}
+    </table>
+    ${has ? '<div class="chart-wrap"><canvas id="wellChart" height="220"></canvas></div>' :
+      '<div class="no-data">No usable water-level series for this well — construction/casing details only, or a single spot reading.</div>'}
+    ${w.note ? '<div class="note">'+w.note+'</div>' : ''}
+    <div class="note">Source: TWDB Groundwater Database${w.live?' / USGS field-measurements API':''}, Well ${w.id.slice(0,2)}-${w.id.slice(2,4)}-${w.id.slice(4)}.</div>
+  `;
+  if (has){
+    const ctx = document.getElementById('wellChart').getContext('2d');
+    if (chartInstance) chartInstance.destroy();
+    chartInstance = new Chart(ctx, {
+      type:'line',
+      data:{ datasets:[{
+        label: w.mixedDatum ? 'Water level (ft, mixed datum)' : 'Depth to water (ft below surface)',
+        data: w.readings.map(r=>({x:r[0], y:r[1]})),
+        borderColor: w.live ? '#C0392B' : '#2B6777', backgroundColor: w.live ? '#C0392B' : '#2B6777',
+        pointRadius:3, borderWidth:1.5, tension:0, showLine:true, spanGaps:false
+      }]},
+      options:{
+        responsive:true,
+        scales:{
+          x:{ type:'linear', title:{display:true,text:'Year'}, ticks:{ callback:v=>Math.round(v) } },
+          y:{ reverse: !w.mixedDatum, title:{display:true,text: w.mixedDatum ? 'ft' : 'ft below surface'} }
+        },
+        plugins:{ legend:{display:false} }
+      }
+    });
+  }
+}
+
+function renderStationPanel(s){
+  const panel = document.getElementById('panel');
+  const has = s.readings.length > 1;
+  panel.innerHTML = `
+    <div class="kicker">SUBSIDENCE GPS STATION</div>
+    <h2>${s.id}</h2>
+    <table class="meta">
+      <tr><td>Monitoring since</td><td>${s.since}</td></tr>
+      <tr><td>Total displacement</td><td>${s.totalCm} cm</td></tr>
+      <tr><td>2025 rate</td><td>${s.rate2025} cm/yr</td></tr>
+      <tr><td>Coordinates</td><td>${s.lat.toFixed(4)}, ${s.lon.toFixed(4)}</td></tr>
+      <tr><td>Trend</td><td>${s.note}</td></tr>
+    </table>
+    ${has ? '<div class="chart-wrap ground"><canvas id="stChart" height="220"></canvas></div>' :
+      '<div class="no-data">Full time series not pulled for this prototype — summary stats above are real, sourced from the district\'s public feature service.</div>'}
+    ${has ? '<div class="note">Approximate — points digitized by eye from the official HGSD/University of Houston chart to show trend shape. Exact daily values: <a class="src" href="https://hgsubsidence.org/GPS/2025/'+s.id+'_GOM25_neu_cm.png" target="_blank">hgsubsidence.org</a></div>' :
+            '<div class="note">Source: HGSD AGOL_SubsRate21_25 feature service.</div>'}
+  `;
+  if (has){
+    const ctx = document.getElementById('stChart').getContext('2d');
+    if (chartInstance) chartInstance.destroy();
+    chartInstance = new Chart(ctx, {
+      type:'line',
+      data:{ datasets:[{
+        label:'Change in elevation (cm)',
+        data: s.readings.map(r=>({x:r[0], y:r[1]})),
+        borderColor:'#AE5A28', backgroundColor:'#AE5A28',
+        pointRadius:2.5, borderWidth:1.5, tension:0.15, showLine:true
+      }]},
+      options:{
+        responsive:true,
+        scales:{
+          x:{ type:'linear', title:{display:true,text:'Year'}, ticks:{ callback:v=>Math.round(v) } },
+          y:{ title:{display:true,text:'cm change'} }
+        },
+        plugins:{ legend:{display:false} }
+      }
+    });
+  }
+}
+
+function renderCreekPanel(c){
+  const panel = document.getElementById('panel');
+  panel.innerHTML = `
+    <div class="kicker">CYPRESS CREEK GAGE</div>
+    <h2>Gage ${c.id}</h2>
+    <table class="meta">
+      <tr><td>Location</td><td>${c.name}</td></tr>
+      <tr><td>Current level</td><td>${c.level} ft</td></tr>
+      <tr><td>Flood stage</td><td>${c.floodStage ? c.floodStage+' ft' : 'not listed'}</td></tr>
+      <tr><td>Coordinates</td><td>${c.lat.toFixed(4)}, ${c.lon.toFixed(4)}</td></tr>
+    </table>
+    ${c.harveyFlood ? '<div class="flood-flag"><b>Hurricane Harvey, 8/31/2017 11:59 PM:</b><br>The district&#39;s own historical record shows this gage at status <b>"'+c.harveyFlood+'"</b> — confirmed active flooding at this exact location.</div>' : ''}
+    <div class="note">Source: Harris County Flood Control District, Flood Warning System (harriscountyfws.org). Current level shown is a live reading, not historical.</div>
+  `;
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+}
+
+wells.forEach(w=>{
+  const hasData = w.readings.length > 1;
+  L.marker([w.lat,w.lon], {icon:wellIcon(hasData, w.live)})
+    .addTo(map)
+    .bindPopup(`<b>Well ${w.id}${w.live?' — LIVE':''}</b>${w.aquifer} · ${w.depth} ft`)
+    .on('click', ()=>renderWellPanel(w));
+});
+
+stations.forEach(s=>{
+  L.marker([s.lat,s.lon], {icon:stationIcon()})
+    .addTo(map)
+    .bindPopup(`<b>${s.id}</b>${s.totalCm} cm since ${s.since}`)
+    .on('click', ()=>renderStationPanel(s));
+});
+
+creeks.forEach(c=>{
+  L.marker([c.lat,c.lon], {icon:creekIcon(!!c.harveyFlood)})
+    .addTo(map)
+    .bindPopup(`<b>${c.name}</b>${c.level} ft${c.harveyFlood?' · Harvey: '+c.harveyFlood:''}`)
+    .on('click', ()=>renderCreekPanel(c));
+});
+</script>
+</body>
+</html>
