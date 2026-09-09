@@ -109,6 +109,56 @@
     font-size:0.95rem;
   }
   .empty-state b{color:var(--ink);}
+  .back-link{
+    display:inline-block;
+    font-family:"Courier New",monospace;
+    font-size:0.72rem;
+    color:var(--water);
+    cursor:pointer;
+    margin-bottom:10px;
+    text-decoration:none;
+  }
+  .back-link:hover{ text-decoration:underline; }
+  .loc-group-title{
+    font-family:"Courier New",monospace;
+    font-size:0.72rem;
+    letter-spacing:0.03em;
+    margin:20px 0 8px;
+    padding-bottom:4px;
+    border-bottom:1px solid var(--line);
+  }
+  .loc-group-title:first-of-type{ margin-top:4px; }
+  .loc-item{
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+    padding:7px 4px;
+    cursor:pointer;
+    border-bottom:1px solid var(--line);
+    font-size:0.88rem;
+  }
+  .loc-item:hover{ background:var(--paper); }
+  .loc-dot{
+    display:inline-block;
+    width:9px;height:9px;
+    border-radius:50%;
+    flex:none;
+  }
+  .loc-tri{
+    width:0;height:0;
+    border-radius:0;
+    border-left:5px solid transparent;
+    border-right:5px solid transparent;
+    border-bottom:8px solid var(--ground);
+    background:none !important;
+  }
+  .loc-sub{
+    color:var(--ink-soft);
+    font-size:0.78rem;
+    margin-left:auto;
+    text-align:right;
+    white-space:nowrap;
+  }
   table.meta{
     width:100%;
     border-collapse:collapse;
@@ -190,11 +240,7 @@
   <main>
     <div id="map"></div>
     <aside id="panel">
-      <div class="empty-state">
-        <b>Click a marker to explore it.</b><br><br>
-        Blue circles: TWDB/USGS groundwater wells. Rust triangles: HGSD/UH subsidence GPS stations. Green squares: HCFCD Cypress Creek gages.<br><br>
-        One well (6503313) is a <b>live, currently-monitored USGS site</b>. Two creek gages carry a confirmed "Flooding Likely" status from Hurricane Harvey, August 31, 2017.
-      </div>
+      <div class="empty-state">Loading…</div>
     </aside>
   </main>
 </div>
@@ -349,6 +395,7 @@ function renderWellPanel(w){
   const panel = document.getElementById('panel');
   const has = w.readings.length > 1;
   panel.innerHTML = `
+    <a class="back-link" onclick="renderList()">&larr; All locations</a>
     <div class="kicker">GROUNDWATER WELL</div>
     <h2>State Well ${w.id}${w.live?'<span class="badge-live">LIVE · USGS</span>':''}</h2>
     <table class="meta">
@@ -390,6 +437,7 @@ function renderStationPanel(s){
   const panel = document.getElementById('panel');
   const has = s.readings.length > 1;
   panel.innerHTML = `
+    <a class="back-link" onclick="renderList()">&larr; All locations</a>
     <div class="kicker">SUBSIDENCE GPS STATION</div>
     <h2>${s.id}</h2>
     <table class="meta">
@@ -430,6 +478,7 @@ function renderStationPanel(s){
 function renderCreekPanel(c){
   const panel = document.getElementById('panel');
   panel.innerHTML = `
+    <a class="back-link" onclick="renderList()">&larr; All locations</a>
     <div class="kicker">CYPRESS CREEK GAGE</div>
     <h2>Gage ${c.id}</h2>
     <table class="meta">
@@ -444,27 +493,90 @@ function renderCreekPanel(c){
   if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
 }
 
+const wellMarkers = {}, stationMarkers = {}, creekMarkers = {};
+
 wells.forEach(w=>{
   const hasData = w.readings.length > 1;
-  L.marker([w.lat,w.lon], {icon:wellIcon(hasData, w.live)})
+  const marker = L.marker([w.lat,w.lon], {icon:wellIcon(hasData, w.live)})
     .addTo(map)
     .bindPopup(`<b>Well ${w.id}${w.live?' — LIVE':''}</b>${w.aquifer} · ${w.depth} ft`)
     .on('click', ()=>renderWellPanel(w));
+  wellMarkers[w.id] = marker;
 });
 
 stations.forEach(s=>{
-  L.marker([s.lat,s.lon], {icon:stationIcon()})
+  const marker = L.marker([s.lat,s.lon], {icon:stationIcon()})
     .addTo(map)
     .bindPopup(`<b>${s.id}</b>${s.totalCm} cm since ${s.since}`)
     .on('click', ()=>renderStationPanel(s));
+  stationMarkers[s.id] = marker;
 });
 
 creeks.forEach(c=>{
-  L.marker([c.lat,c.lon], {icon:creekIcon(!!c.harveyFlood)})
+  const marker = L.marker([c.lat,c.lon], {icon:creekIcon(!!c.harveyFlood)})
     .addTo(map)
     .bindPopup(`<b>${c.name}</b>${c.level} ft${c.harveyFlood?' · Harvey: '+c.harveyFlood:''}`)
     .on('click', ()=>renderCreekPanel(c));
+  creekMarkers[c.id] = marker;
 });
+
+function renderList(){
+  const panel = document.getElementById('panel');
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+  let html = `
+    <div class="kicker">ALL LOCATIONS</div>
+    <h2>Cypress Data Explorer</h2>
+    <div class="note" style="margin:8px 0 4px;">Click any item below, or a marker on the map, to see its data.</div>
+  `;
+
+  html += `<div class="loc-group-title" style="color:var(--water)">WELLS (${wells.length})</div>`;
+  wells.forEach(w=>{
+    const hasData = w.readings.length > 1;
+    const color = w.live ? '#C0392B' : (hasData ? '#2B6777' : '#B7ADA0');
+    html += `<div class="loc-item" data-type="well" data-id="${w.id}">
+      <span class="loc-dot" style="background:${color}"></span>
+      <span>Well ${w.id}${w.live?' <span class="badge-live" style="font-size:0.55rem;padding:1px 5px;">LIVE</span>':''}</span>
+      <span class="loc-sub">${w.aquifer}${w.trend ? ' · ' + w.trend.split(' — ')[0] : ''}</span>
+    </div>`;
+  });
+
+  html += `<div class="loc-group-title" style="color:var(--ground)">SUBSIDENCE STATIONS (${stations.length})</div>`;
+  stations.forEach(s=>{
+    html += `<div class="loc-item" data-type="station" data-id="${s.id}">
+      <span class="loc-dot loc-tri"></span>
+      <span>${s.id}</span>
+      <span class="loc-sub">${s.totalCm} cm since ${s.since}</span>
+    </div>`;
+  });
+
+  html += `<div class="loc-group-title" style="color:var(--creek)">CREEK GAGES (${creeks.length})</div>`;
+  creeks.forEach(c=>{
+    const color = c.harveyFlood ? '#C0392B' : '#3E6E4A';
+    html += `<div class="loc-item" data-type="creek" data-id="${c.id}">
+      <span class="loc-dot" style="background:${color}"></span>
+      <span>${c.name}</span>
+      <span class="loc-sub">${c.harveyFlood ? 'Harvey: flooded' : c.level + ' ft'}</span>
+    </div>`;
+  });
+
+  panel.innerHTML = html;
+
+  panel.querySelectorAll('.loc-item').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const type = el.dataset.type, id = el.dataset.id;
+      let marker, data;
+      if (type === 'well') { data = wells.find(x=>x.id===id); marker = wellMarkers[id]; renderWellPanel(data); }
+      else if (type === 'station') { data = stations.find(x=>x.id===id); marker = stationMarkers[id]; renderStationPanel(data); }
+      else { data = creeks.find(x=>x.id===id); marker = creekMarkers[id]; renderCreekPanel(data); }
+      map.panTo(marker.getLatLng());
+      marker.openPopup();
+    });
+  });
+}
+
+renderList();
+
 </script>
 </body>
 </html>
