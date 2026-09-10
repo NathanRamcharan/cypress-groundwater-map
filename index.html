@@ -307,6 +307,85 @@
   .cov-strong{ color:var(--water); font-weight:bold; }
   .cov-weak{ color:#B7900A; }
   .cov-none{ color:var(--live); }
+
+  .photo-gallery{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:16px;
+    margin:14px 0;
+  }
+  .photo-gallery figure{ margin:0; }
+  .photo-gallery img{
+    width:100%;
+    height:auto;
+    display:block;
+    border:1px solid var(--line);
+    cursor:zoom-in;
+    transition:opacity 0.15s;
+  }
+  .photo-gallery img:hover{ opacity:0.85; }
+  .photo-gallery figcaption{
+    font-size:0.78rem;
+    color:var(--ink-soft);
+    margin-top:6px;
+    line-height:1.4;
+  }
+  @media (max-width: 700px){
+    .photo-gallery{ grid-template-columns: 1fr; }
+  }
+  #lightbox{
+    display:none;
+    position:fixed;
+    top:0; left:0; right:0; bottom:0;
+    background:rgba(30,42,38,0.92);
+    z-index:1000;
+    align-items:center;
+    justify-content:center;
+    cursor:zoom-out;
+    padding:30px;
+  }
+  #lightbox.open{ display:flex; }
+  #lightbox img{
+    max-width:100%;
+    max-height:85vh;
+    box-shadow:0 4px 24px rgba(0,0,0,0.4);
+  }
+  #lightbox .lb-caption{
+    position:absolute;
+    bottom:24px;
+    left:0; right:0;
+    text-align:center;
+    color:#fff;
+    font-size:0.85rem;
+    padding:0 40px;
+  }
+  #lightbox .lb-close{
+    position:absolute;
+    top:18px; right:26px;
+    color:#fff;
+    font-size:1.8rem;
+    font-family:"Courier New",monospace;
+    cursor:pointer;
+  }
+  .photo-badge{
+    display:inline-block;
+    font-size:0.85rem;
+    margin-left:6px;
+    cursor:pointer;
+    vertical-align:1px;
+  }
+  .photo-cta{
+    display:inline-block;
+    margin-top:10px;
+    font-family:"Courier New",monospace;
+    font-size:0.72rem;
+    color:var(--live);
+    cursor:pointer;
+    border:1px solid var(--live);
+    padding:5px 10px;
+    background:#F7E3E0;
+  }
+  .photo-cta:hover{ background:var(--live); color:#fff; }
 </style>
 </head>
 <body>
@@ -385,7 +464,53 @@
     </div>
 
     <div class="evidence-block">
-      <h3>5. Sources &amp; how to verify this yourself</h3>
+      <h3>5. Field documentation — site visit, Sept 2026</h3>
+      <div class="finding">Primary-source photos taken in person, not from a database, at all three planned stops.</div>
+
+      <div class="note" id="photos-well-site" style="margin-bottom:10px;"><b>Stop 1 — Historical well site.</b> Site of wells 65-03-204 and 65-03-206 (monitored 1931/1957–1985). Correction to an earlier assumption in this project — this parcel is <b>commercial/business land, not a residential subdivision</b> as originally guessed. Even the "what replaced the monitoring" story needed to be verified on the ground, not assumed from a map.</div>
+      <div class="photo-gallery">
+        <figure>
+          <img src="photos/well-site-1.jpg" alt="Site of wells 6503204/6503206, parking lot and storm drain">
+          <figcaption>Parking lot and storm drain grate on the well site parcel, facing the perimeter fence.</figcaption>
+        </figure>
+        <figure>
+          <img src="photos/well-site-2.jpg" alt="Site of wells 6503204/6503206, fence line and fire hydrant">
+          <figcaption>Same fence line, further along — fire hydrant and brushy vacant ground behind the chain-link, commercial building visible beyond.</figcaption>
+        </figure>
+      </div>
+
+      <div class="note" id="photos-cypress-park" style="margin:18px 0 10px;"><b>Stop 2 — Cypress Park</b> (near Gage 1165, Cypress Creek @ Eldridge Pkwy N.). Wide, calm lake within the park, crossed by a wooden pedestrian bridge. Checklist: water brownish, mostly still; a small channel actively feeding into the lake was visible; litter present (bottle, shoe) near the waterline; wildlife present (egret).</div>
+      <div class="photo-gallery">
+        <figure>
+          <img src="photos/cypress-park-1.jpg" alt="Cypress Park lake with pedestrian bridge">
+          <figcaption>Main lake, facing the wooden pedestrian bridge. Litter visible in the grass at the water's edge.</figcaption>
+        </figure>
+        <figure>
+          <img src="photos/cypress-park-2.jpg" alt="Cypress Park inflow channel feeding the lake">
+          <figcaption>A small channel actively feeding into the lake through the grass — visible flow, not just standing water.</figcaption>
+        </figure>
+        <figure>
+          <img src="photos/cypress-park-3.jpg" alt="Cypress Park, egret at water's edge near park facilities">
+          <figcaption>Egret at the water's edge, with park sports facilities visible in the background.</figcaption>
+        </figure>
+      </div>
+
+      <div class="note" id="photos-russ-poppe" style="margin:18px 0 10px;"><b>Stop 3 — Russ Poppe Family Park</b> (near Gage 1160, Cypress Creek @ Grant Road). Correction to the planned route: the water here is <b>a wooded pond adjacent to the park, not a paved trail directly along Cypress Creek</b> as assumed when this stop was planned. Water is noticeably darker/more tannic (brownish-green) than at Cypress Park, banks are natural and wooded rather than mowed, with a sandy edge visible on the far shore.</div>
+      <div class="photo-gallery">
+        <figure>
+          <img src="photos/russ-poppe-1.jpg" alt="Wooded pond near Russ Poppe Family Park">
+          <figcaption>Wooded pond adjacent to the park — natural banks, sandy far shore, no visible current.</figcaption>
+        </figure>
+        <figure>
+          <img src="photos/russ-poppe-2.jpg" alt="Wooded pond near Russ Poppe Family Park, closer view">
+          <figcaption>Closer view through tree branches — darker, more tannic water color than at Cypress Park.</figcaption>
+        </figure>
+      </div>
+      <div class="note">Checked against satellite mapping: Russ Poppe Family Park actually has two separate water features — Cypress Creek itself (a winding channel along the park's edge) and two distinct rounded ponds inside the park boundary. Based on the contained, oval shape and lack of visible current in these photos, this is most likely <b>one of the park's ponds, not Cypress Creek's main channel</b> — so it should not be cited as a direct stand-in for gage 1160's readings. It's still valid documentation of the park and surrounding water conditions, just not the creek channel itself.</div>
+    </div>
+
+    <div class="evidence-block">
+      <h3>6. Sources &amp; how to verify this yourself</h3>
       <div class="finding">Every number on this site traces back to a public agency source. Click a well, station, or gage on the Map Explorer tab for a source link specific to that item. General sources below:</div>
       <table class="coverage">
         <tr><th>Layer</th><th>Agency</th><th>Verify at</th></tr>
@@ -400,9 +525,15 @@
   </div>
 </div>
 
+<div id="lightbox" onclick="closeLightbox()">
+  <span class="lb-close">&times;</span>
+  <img id="lightboxImg" src="" alt="">
+  <div class="lb-caption" id="lightboxCaption"></div>
+</div>
+
 <script>
 const wells = [
-  {id:"6503204", lat:29.970833, lon:-95.698334, aquifer:"Chicot, Lower", depth:72,
+  {id:"6503204", lat:29.970833, lon:-95.698334, aquifer:"Chicot, Lower", depth:72, photoAnchor:"photos-well-site",
    status:"1931–1985, ~90 readings (gap 1938–1980 not yet transcribed)", live:false,
    readings:[
     [1931.25,6.5],[1931.47,9.89],[1931.56,12.25],[1931.62,13.7],[1931.73,15.3],[1931.87,15.76],[1931.94,15.34],
@@ -413,7 +544,7 @@ const wells = [
     [1980.06,56.48],[1980.50,57.2],[1980.73,62.15],[1981.04,58.45],[1981.44,58.6],[1981.67,62.14],
     [1982.05,59.06],[1982.71,62.77],[1983.03,58.79],[1984.05,59.05],[1985.02,59.14]
    ]},
-  {id:"6503206", lat:29.970833, lon:-95.698611, aquifer:"Chicot, Lower", depth:160,
+  {id:"6503206", lat:29.970833, lon:-95.698611, aquifer:"Chicot, Lower", depth:160, photoAnchor:"photos-well-site",
    status:"1957–1985, complete series (~40 readings)", live:false,
    readings:[
     [1957.45,36.6],[1957.70,42.73],[1958.72,43.02],[1959.13,37.11],[1959.45,37.76],[1959.73,41.05],[1959.99,37.49],
@@ -507,8 +638,8 @@ const stations = [
 
 const creeks = [
   {id:"1150", name:"Cypress Creek @ SH 249", lat:29.9857, lon:-95.5699, level:92.48, floodStage:117.0, harveyFlood:null},
-  {id:"1160", name:"Cypress Creek @ Grant Road", lat:29.9735, lon:-95.5985, level:102.5, floodStage:122.2, harveyFlood:null},
-  {id:"1165", name:"Cypress Creek @ Eldridge Pkwy N.", lat:29.9662, lon:-95.6073, level:103.07, floodStage:122.6, harveyFlood:"Flooding Likely"},
+  {id:"1160", name:"Cypress Creek @ Grant Road", lat:29.9735, lon:-95.5985, level:102.5, floodStage:122.2, harveyFlood:null, photoAnchor:"photos-russ-poppe"},
+  {id:"1165", name:"Cypress Creek @ Eldridge Pkwy N.", lat:29.9662, lon:-95.6073, level:103.07, floodStage:122.6, harveyFlood:"Flooding Likely", photoAnchor:"photos-cypress-park"},
   {id:"1170", name:"Cypress Creek @ Huffmeister Road", lat:29.9616, lon:-95.6312, level:110.38, floodStage:127.5, harveyFlood:"Flooding Likely"},
   {id:"1175", name:"Cypress Creek @ US 290", lat:29.9569, lon:-95.6782, level:120.8, floodStage:136.4, harveyFlood:null},
   {id:"1180", name:"Cypress Creek @ Katy-Hockley Road", lat:29.9504, lon:-95.8083, level:145.85, floodStage:null, harveyFlood:null}
@@ -563,6 +694,7 @@ function renderWellPanel(w){
     ${has ? '<div class="chart-wrap"><canvas id="wellChart" height="220"></canvas></div>' :
       '<div class="no-data">No usable water-level series for this well — construction/casing details only, or a single spot reading.</div>'}
     ${w.note ? '<div class="note">'+w.note+'</div>' : ''}
+    ${w.photoAnchor ? '<div class="photo-cta" onclick="goToPhotos(\''+w.photoAnchor+'\')">\uD83D\uDCF7 View field photos from this site</div>' : ''}
     <div class="note">
       Source: TWDB Groundwater Database — <a class="src" href="https://www3.twdb.texas.gov/apps/waterdatainteractive/GetReports.aspx?Num=${w.id}&amp;Type=GWDB" target="_blank">view official well report for ${w.id}</a>
       ${w.usgs ? '<br>Live data: <a class="src" href="https://waterdata.usgs.gov/monitoring-location/USGS-'+w.usgs+'/" target="_blank">USGS monitoring location '+w.usgs+'</a>' : ''}
@@ -646,6 +778,7 @@ function renderCreekPanel(c){
       <tr><td>Coordinates</td><td>${c.lat.toFixed(4)}, ${c.lon.toFixed(4)}</td></tr>
     </table>
     ${c.harveyFlood ? '<div class="flood-flag"><b>Hurricane Harvey, 8/31/2017 11:59 PM:</b><br>The district&#39;s own historical record shows this gage at status <b>"'+c.harveyFlood+'"</b> — confirmed active flooding at this exact location.</div>' : ''}
+    ${c.photoAnchor ? '<div class="photo-cta" onclick="goToPhotos(\''+c.photoAnchor+'\')">\uD83D\uDCF7 View field photos from this site</div>' : ''}
     <div class="note">Source: Harris County Flood Control District — <a class="src" href="https://www.harriscountyfws.org/" target="_blank">Flood Warning System</a> (search Site ${c.id} under "Site by Location"). Current level shown is a live reading, not historical.</div>
   `;
   if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
@@ -678,6 +811,14 @@ creeks.forEach(c=>{
   creekMarkers[c.id] = marker;
 });
 
+function goToPhotos(anchorId){
+  showTab('evidence');
+  setTimeout(()=>{
+    const el = document.getElementById(anchorId);
+    if (el) el.scrollIntoView({behavior:'smooth', block:'center'});
+  }, 100);
+}
+
 function renderList(){
   const panel = document.getElementById('panel');
   if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
@@ -685,7 +826,7 @@ function renderList(){
   let html = `
     <div class="kicker">ALL LOCATIONS</div>
     <h2>Cypress Data Explorer</h2>
-    <div class="note" style="margin:8px 0 4px;">Click any item below, or a marker on the map, to see its data.</div>
+    <div class="note" style="margin:8px 0 4px;">Click any item below, or a marker on the map, to see its data. \uD83D\uDCF7 next to an item means real field photos are available for it.</div>
   `;
 
   html += `<div class="loc-group-title" style="color:var(--water)">WELLS (${wells.length})</div>`;
@@ -694,7 +835,7 @@ function renderList(){
     const color = w.live ? '#C0392B' : (hasData ? '#2B6777' : '#B7ADA0');
     html += `<div class="loc-item" data-type="well" data-id="${w.id}">
       <span class="loc-dot" style="background:${color}"></span>
-      <span>Well ${w.id}${w.live?' <span class="badge-live" style="font-size:0.55rem;padding:1px 5px;">LIVE</span>':''}</span>
+      <span>Well ${w.id}${w.live?' <span class="badge-live" style="font-size:0.55rem;padding:1px 5px;">LIVE</span>':''}${w.photoAnchor?' <span class="photo-badge" data-anchor="'+w.photoAnchor+'" title="Field photos available">\uD83D\uDCF7</span>':''}</span>
       <span class="loc-sub">${w.aquifer}${w.trend ? ' · ' + w.trend.split(' — ')[0] : ''}</span>
     </div>`;
   });
@@ -713,12 +854,19 @@ function renderList(){
     const color = c.harveyFlood ? '#C0392B' : '#3E6E4A';
     html += `<div class="loc-item" data-type="creek" data-id="${c.id}">
       <span class="loc-dot" style="background:${color}"></span>
-      <span>${c.name}</span>
+      <span>${c.name}${c.photoAnchor?' <span class="photo-badge" data-anchor="'+c.photoAnchor+'" title="Field photos available">\uD83D\uDCF7</span>':''}</span>
       <span class="loc-sub">${c.harveyFlood ? 'Harvey: flooded' : c.level + ' ft'}</span>
     </div>`;
   });
 
   panel.innerHTML = html;
+
+  panel.querySelectorAll('.photo-badge').forEach(badge=>{
+    badge.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      goToPhotos(badge.dataset.anchor);
+    });
+  });
 
   panel.querySelectorAll('.loc-item').forEach(el=>{
     el.addEventListener('click', ()=>{
@@ -830,6 +978,24 @@ function buildEvidenceCharts(){
   });
 }
 
+// ---- Photo lightbox ----
+function openLightbox(src, caption){
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightboxCaption').textContent = caption || '';
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox(){
+  document.getElementById('lightbox').classList.remove('open');
+}
+document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') closeLightbox(); });
+
+document.querySelectorAll('.photo-gallery img').forEach(img=>{
+  img.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const caption = img.closest('figure').querySelector('figcaption');
+    openLightbox(img.src, caption ? caption.textContent : '');
+  });
+});
 </script>
 </body>
 </html>
