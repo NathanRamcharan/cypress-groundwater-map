@@ -251,6 +251,37 @@
   }
   #evidence h2{ font-size:1.4rem; margin:0 0 4px; }
   #evidence .lede{ color:var(--ink-soft); font-size:0.92rem; margin-bottom:28px; max-width:640px; }
+  #paper{
+    display:none;
+    overflow-y:auto;
+    padding:28px 40px 80px;
+    max-width:760px;
+    margin:0 auto;
+  }
+  #paper h2{ font-size:1.4rem; margin:0 0 4px; }
+  #paper .lede{ color:var(--ink-soft); font-size:0.92rem; margin-bottom:28px; }
+  .paper-section{
+    margin-bottom:30px;
+    padding-bottom:22px;
+    border-bottom:1px solid var(--line);
+  }
+  .paper-section h3{
+    font-size:1.1rem;
+    margin:0 0 10px;
+  }
+  .paper-section p{
+    font-size:0.95rem;
+    line-height:1.65;
+    margin:0 0 14px;
+  }
+  .paper-placeholder{
+    font-size:0.9rem;
+    color:var(--ink-soft);
+    font-style:italic;
+    background:var(--paper);
+    border:1px dashed var(--line);
+    padding:14px 16px;
+  }
   .thesis-box{
     background:var(--water-soft);
     border-left:3px solid var(--water);
@@ -398,6 +429,7 @@
     <div class="tabs">
       <button class="tab-btn active" id="tabMapBtn" onclick="showTab('map')">MAP EXPLORER</button>
       <button class="tab-btn" id="tabEvidenceBtn" onclick="showTab('evidence')">EVIDENCE FOR THESIS</button>
+      <button class="tab-btn" id="tabPaperBtn" onclick="showTab('paper')">RESEARCH PAPER</button>
     </div>
     <div class="legend">
       <span><span class="dot" style="background:var(--water)"></span>well — data on record</span>
@@ -467,7 +499,7 @@
       <h3>5. Field documentation — site visit, Sept 2026</h3>
       <div class="finding">Primary-source photos taken in person, not from a database, at all three planned stops.</div>
 
-      <div class="note" id="photos-well-site" style="margin-bottom:10px;"><b>Stop 1 — Historical well site.</b> Site of wells 65-03-204 and 65-03-206 (monitored 1931/1957–1985). Correction to an earlier assumption in this project — this parcel is <b>commercial/business land, not a residential subdivision</b> as originally guessed. Even the "what replaced the monitoring" story needed to be verified on the ground, not assumed from a map.</div>
+      <div class="note" id="photos-well-site" style="margin-bottom:10px;"><b>Stop 1 — Historical well site.</b> Site of wells 65-03-204 and 65-03-206 (monitored 1931/1957–1985). Correction to an earlier assumption in this project — this parcel is <b>commercial/business land, not a residential subdivision</b> as originally guessed. TWDB later confirmed by email that both wells were USGS-operated sites, and that TWDB has no record of why monitoring stopped in 1985 — they suspect the wells were plugged due to age, not necessarily connected to HGSD's 1985 regulatory reorganization as this project first assumed. Two corrections in one stop: a good reminder that assumptions need checking, whether against a satellite map or an agency's own records.</div>
       <div class="photo-gallery">
         <figure>
           <img src="well-site-1.jpg" alt="Site of wells 6503204/6503206, parking lot and storm drain">
@@ -519,8 +551,54 @@
         <tr><td>Subsidence</td><td>Harris-Galveston Subsidence District (HGSD)</td><td><a class="src" href="https://hgsubsidence.org/science-research/measuring-subsidence/" target="_blank">hgsubsidence.org</a></td></tr>
         <tr><td>Creek gages</td><td>Harris County Flood Control District (HCFCD)</td><td><a class="src" href="https://www.harriscountyfws.org/" target="_blank">Harris County Flood Warning System</a></td></tr>
         <tr><td>Flood claims</td><td>FEMA (OpenFEMA)</td><td><a class="src" href="https://www.fema.gov/openfema-data-page/nfip-redacted-claims-v3" target="_blank">NFIP Redacted Claims v3</a></td></tr>
+        <tr><td>Well 65-03-204/206 history</td><td>Rebecca Storms, P.G., TWDB Groundwater Monitoring Manager</td><td>Personal correspondence, Sept. 2026 — confirmed USGS site numbers, no record of 1985 discontinuation cause</td></tr>
       </table>
       <div class="note">A caveat worth knowing: the flood-claims data on this site was pulled from an older FEMA API version (<code>FimaNfipClaims</code>) that FEMA has since frozen and is retiring in favor of the v3 dataset linked above. The historical numbers themselves are unchanged, but if you're citing this yourself, reference the v3 dataset going forward. The subsidence trend charts (P018, AULT) are digitized by eye from HGSD's official chart images to show trend shape — accurate in direction, not guaranteed to the exact decimal. Growth/population figures came from secondary sources reporting Census data, not the Census Bureau directly.</div>
+    </div>
+  </div>
+
+  <div id="paper">
+    <h2>Research Paper</h2>
+    <div class="lede">The full write-up — Nathan's own words, built section by section. Sections marked "in progress" will fill in as each one is drafted.</div>
+
+    <div class="thesis-box">
+      <span class="label">THESIS</span>
+      From the early 1900s to the present day, the Cypress area has not had subsidence stations, wells, and flooding data coexist to provide enough proof that the sinking of the ground causes flooding, with too many outside factors becoming involved, such as rainfall intensity and the addition of pavements.
+    </div>
+
+    <div class="paper-section">
+      <h3>1. Introduction</h3>
+      <div class="paper-placeholder">In progress — sets up the research question and why it matters, ends with the thesis above.</div>
+    </div>
+
+    <div class="paper-section">
+      <h3>2. Literature Review</h3>
+      <div class="paper-placeholder">In progress — drafted separately, being incorporated in Nathan's own words.</div>
+    </div>
+
+    <div class="paper-section">
+      <h3>3. Methods</h3>
+      <div class="paper-placeholder">In progress — how the data was collected, source by source.</div>
+    </div>
+
+    <div class="paper-section">
+      <h3>4. Findings</h3>
+      <div class="paper-placeholder">In progress — see the Evidence for Thesis tab for the data this section draws from.</div>
+    </div>
+
+    <div class="paper-section">
+      <h3>5. Discussion</h3>
+      <div class="paper-placeholder">In progress — the argument for the thesis, including the counterargument and what the data doesn't prove.</div>
+    </div>
+
+    <div class="paper-section">
+      <h3>6. Conclusion</h3>
+      <div class="paper-placeholder">In progress.</div>
+    </div>
+
+    <div class="paper-section">
+      <h3>7. Works Cited</h3>
+      <div class="paper-placeholder">In progress.</div>
     </div>
   </div>
 </div>
@@ -533,19 +611,40 @@
 
 <script>
 const wells = [
-  {id:"6503204", lat:29.970833, lon:-95.698334, aquifer:"Chicot, Lower", depth:72, photoAnchor:"photos-well-site",
-   status:"1931–1985, ~90 readings (gap 1938–1980 not yet transcribed)", live:false,
+  {id:"6503204", lat:29.970833, lon:-95.698334, aquifer:"Chicot, Lower", depth:72, photoAnchor:"photos-well-site", usgs:"295814095415301",
+   status:"1931–1985, complete official record (206 readings, no gaps)", live:false,
+   note:"Full record provided directly by USGS via TWDB (R. Storms, P.G., personal correspondence, Sept. 2026) — replaces an earlier partial transcription that had a gap from 1938–1980. TWDB has no record of why monitoring stopped in 1985, but suspects the well was plugged due to age — not necessarily tied to HGSD's 1985 regulatory reorganization as this project originally assumed.",
    readings:[
-    [1931.25,6.5],[1931.47,9.89],[1931.56,12.25],[1931.62,13.7],[1931.73,15.3],[1931.87,15.76],[1931.94,15.34],
-    [1932.03,13.65],[1932.11,9.85],[1932.20,7.7],[1932.30,8.88],[1932.40,10.4],[1932.48,12.2],[1932.56,13.88],
-    [1932.65,15.17],[1932.74,15.53],[1932.82,15.86],[1932.91,15.93],[1932.99,15.74],[1933.08,15.56],[1933.19,14.57],
-    [1933.36,13.78],[1933.48,15],[1933.89,16.76],[1934.31,10.62],[1934.91,15.76],[1935.41,7.72],[1935.63,12.7],
-    [1936.15,6.43],[1936.36,10.88],[1937.86,14.04],[1938.09,13.4],[1938.36,9.3],
-    [1980.06,56.48],[1980.50,57.2],[1980.73,62.15],[1981.04,58.45],[1981.44,58.6],[1981.67,62.14],
-    [1982.05,59.06],[1982.71,62.77],[1983.03,58.79],[1984.05,59.05],[1985.02,59.14]
+    [1931.25,6.49],[1931.46,9.89],[1931.56,12.25],[1931.61,13.7],[1931.73,15.3],[1931.87,15.76],[1931.94,15.34],[1932.03,13.65],
+    [1932.11,9.85],[1932.2,7.7],[1932.3,8.88],[1932.39,10.4],[1932.48,12.2],[1932.55,13.88],[1932.65,15.17],[1932.74,15.53],
+    [1932.82,15.86],[1932.91,15.93],[1932.99,15.74],[1933.08,15.56],[1933.19,14.57],[1933.35,13.78],[1933.48,15.0],[1933.88,16.76],
+    [1934.31,10.62],[1934.91,15.76],[1935.41,7.72],[1935.63,12.7],[1936.15,6.43],[1936.36,10.88],[1937.85,14.04],[1938.09,13.4],
+    [1938.35,9.3],[1938.89,14.86],[1938.97,15.41],[1939.07,13.56],[1939.18,12.53],[1939.41,15.37],[1939.73,18.56],[1939.95,18.3],
+    [1940.14,17.61],[1940.33,17.08],[1940.49,16.65],[1940.64,16.78],[1940.75,17.09],[1940.91,16.29],[1941.07,15.18],[1941.16,14.51],
+    [1941.25,9.75],[1941.39,8.78],[1941.51,7.8],[1941.62,7.6],[1941.72,7.73],[1941.85,7.4],[1941.96,7.49],[1942.05,7.41],
+    [1942.34,6.91],[1942.57,6.68],[1942.71,6.98],[1943.05,7.98],[1943.32,7.93],[1943.46,7.8],[1943.65,8.17],[1944.08,9.17],
+    [1944.41,7.58],[1944.7,7.58],[1944.95,7.88],[1945.07,7.57],[1945.2,7.19],[1945.48,6.36],[1946.04,7.05],[1946.38,6.09],
+    [1946.52,5.45],[1946.72,6.39],[1946.96,6.26],[1947.08,6.02],[1947.19,6.1],[1947.43,5.77],[1947.71,7.12],[1947.96,8.22],
+    [1948.13,8.87],[1948.44,8.92],[1948.7,10.62],[1948.95,12.0],[1949.11,11.62],[1949.45,11.41],[1949.71,12.78],[1949.96,12.94],
+    [1950.15,13.09],[1950.45,12.8],[1950.74,13.6],[1950.96,14.54],[1951.15,15.09],[1951.45,15.71],[1951.71,17.42],[1951.96,18.66],
+    [1952.1,18.14],[1952.46,19.35],[1952.71,32.61],[1953.0,28.08],[1953.11,27.25],[1953.46,28.99],[1953.96,27.87],[1954.15,28.03],
+    [1954.47,35.52],[1954.74,36.92],[1954.97,33.37],[1955.1,32.79],[1955.95,33.92],[1956.13,32.73],[1956.45,33.27],[1956.72,42.1],
+    [1956.95,38.41],[1957.12,36.53],[1957.44,36.58],[1957.7,42.73],[1957.95,37.59],[1958.14,35.41],[1958.44,37.72],[1958.72,42.93],
+    [1958.94,38.7],[1959.13,37.11],[1959.44,37.73],[1959.7,41.02],[1959.99,37.46],[1960.17,35.71],[1960.46,38.2],[1960.71,39.42],
+    [1961.12,32.47],[1961.45,34.53],[1961.72,36.88],[1961.96,33.43],[1962.12,32.49],[1962.45,36.64],[1962.75,41.51],[1963.16,35.97],
+    [1963.46,41.21],[1963.78,44.99],[1963.96,41.93],[1964.18,39.57],[1964.46,44.32],[1964.72,46.17],[1964.93,44.48],[1965.12,42.65],
+    [1965.45,46.47],[1965.71,49.92],[1965.94,46.91],[1966.13,44.91],[1966.47,46.07],[1966.72,49.25],[1966.96,46.39],[1967.15,45.12],
+    [1967.47,50.66],[1967.75,52.05],[1967.95,49.46],[1968.1,48.39],[1968.46,50.75],[1968.96,50.32],[1969.15,49.89],[1969.75,52.98],
+    [1969.95,51.72],[1970.14,49.78],[1970.93,52.26],[1971.12,51.02],[1971.47,54.93],[1971.71,56.48],[1972.09,53.4],[1972.42,54.87],
+    [1972.74,57.43],[1972.92,55.83],[1973.12,54.26],[1973.43,53.74],[1973.7,56.01],[1973.92,54.14],[1974.1,52.62],[1974.47,53.74],
+    [1974.69,56.14],[1974.94,54.03],[1975.12,52.29],[1975.44,51.57],[1975.73,53.78],[1975.95,51.91],[1976.17,51.82],[1976.43,50.64],
+    [1976.7,55.72],[1976.92,55.02],[1977.11,53.24],[1977.41,53.0],[1977.7,56.08],[1978.12,54.58],[1978.41,56.13],[1978.72,58.99],
+    [1979.04,57.71],[1979.41,55.96],[1979.68,58.1],[1980.06,56.48],[1980.5,57.2],[1980.72,62.15],[1981.04,58.45],[1981.44,58.6],
+    [1981.67,62.14],[1982.05,59.06],[1982.71,62.77],[1983.03,58.79],[1984.04,59.05],[1985.02,59.14]
    ]},
-  {id:"6503206", lat:29.970833, lon:-95.698611, aquifer:"Chicot, Lower", depth:160, photoAnchor:"photos-well-site",
+  {id:"6503206", lat:29.970833, lon:-95.698611, aquifer:"Chicot, Lower", depth:160, photoAnchor:"photos-well-site", usgs:"295814095415302",
    status:"1957–1985, complete series (~40 readings)", live:false,
+   note:"TWDB confirmed (personal correspondence, R. Storms, P.G., Sept. 2026) this was a USGS-operated site. TWDB has no record of why monitoring stopped in 1985, but suspects the well was plugged due to age — not necessarily tied to HGSD's 1985 regulatory reorganization as this project originally assumed.",
    readings:[
     [1957.45,36.6],[1957.70,42.73],[1958.72,43.02],[1959.13,37.11],[1959.45,37.76],[1959.73,41.05],[1959.99,37.49],
     [1960.46,38.27],[1960.71,39.47],[1961.12,32.58],[1961.45,34.59],[1961.72,36.99],[1962.12,32.56],[1962.46,36.72],
@@ -697,7 +796,7 @@ function renderWellPanel(w){
     ${w.photoAnchor ? '<div class="photo-cta" onclick="goToPhotos(\''+w.photoAnchor+'\')">\uD83D\uDCF7 View field photos from this site</div>' : ''}
     <div class="note">
       Source: TWDB Groundwater Database — <a class="src" href="https://www3.twdb.texas.gov/apps/waterdatainteractive/GetReports.aspx?Num=${w.id}&amp;Type=GWDB" target="_blank">view official well report for ${w.id}</a>
-      ${w.usgs ? '<br>Live data: <a class="src" href="https://waterdata.usgs.gov/monitoring-location/USGS-'+w.usgs+'/" target="_blank">USGS monitoring location '+w.usgs+'</a>' : ''}
+      ${w.usgs ? '<br>'+(w.live?'Live data':'USGS record')+': <a class="src" href="https://waterdata.usgs.gov/monitoring-location/USGS-'+w.usgs+'/" target="_blank">USGS monitoring location '+w.usgs+'</a>' : ''}
     </div>
   `;
   if (has){
@@ -891,20 +990,29 @@ let evidenceChartsBuilt = false;
 function showTab(tab){
   const mapMain = document.getElementById('mapMain');
   const evidence = document.getElementById('evidence');
+  const paper = document.getElementById('paper');
   const mapBtn = document.getElementById('tabMapBtn');
   const evBtn = document.getElementById('tabEvidenceBtn');
+  const paperBtn = document.getElementById('tabPaperBtn');
+
+  mapMain.style.display = 'none';
+  evidence.style.display = 'none';
+  paper.style.display = 'none';
+  mapBtn.classList.remove('active');
+  evBtn.classList.remove('active');
+  paperBtn.classList.remove('active');
+
   if (tab === 'map'){
     mapMain.style.display = 'grid';
-    evidence.style.display = 'none';
     mapBtn.classList.add('active');
-    evBtn.classList.remove('active');
     setTimeout(()=>map.invalidateSize(), 50);
-  } else {
-    mapMain.style.display = 'none';
+  } else if (tab === 'evidence'){
     evidence.style.display = 'block';
-    mapBtn.classList.remove('active');
     evBtn.classList.add('active');
     if (!evidenceChartsBuilt) buildEvidenceCharts();
+  } else if (tab === 'paper'){
+    paper.style.display = 'block';
+    paperBtn.classList.add('active');
   }
 }
 
