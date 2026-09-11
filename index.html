@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cypress Groundwater &amp; Subsidence Explorer — Prototype v2</title>
+<title>Cypress Groundwater &amp; Subsidence Explorer</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -282,6 +282,15 @@
     border:1px dashed var(--line);
     padding:14px 16px;
   }
+  .cite-list{
+    margin:0;
+    padding-left:22px;
+  }
+  .cite-list li{
+    font-size:0.9rem;
+    line-height:1.6;
+    margin-bottom:14px;
+  }
   .thesis-box{
     background:var(--water-soft);
     border-left:3px solid var(--water);
@@ -424,7 +433,7 @@
   <header>
     <div>
       <h1>Cypress Groundwater &amp; Subsidence Explorer</h1>
-      <div class="sub">prototype v2 · Harris County, TX · Chicot, Evangeline &amp; Jasper aquifers</div>
+      <div class="sub">Harris County, TX · Chicot, Evangeline &amp; Jasper aquifers</div>
     </div>
     <div class="tabs">
       <button class="tab-btn active" id="tabMapBtn" onclick="showTab('map')">MAP EXPLORER</button>
@@ -559,7 +568,7 @@
 
   <div id="paper">
     <h2>Research Paper</h2>
-    <div class="lede">The full write-up — Nathan's own words, built section by section. Sections marked "in progress" will fill in as each one is drafted.</div>
+    <div class="lede">The full write-up — Nathan's own words, built section by section over the course of this project.</div>
 
     <div class="thesis-box">
       <span class="label">THESIS</span>
@@ -568,37 +577,70 @@
 
     <div class="paper-section">
       <h3>1. Introduction</h3>
-      <div class="paper-placeholder">In progress — sets up the research question and why it matters, ends with the thesis above.</div>
+      <p>After Hurricane Harvey, I've always been intrigued by how flooding works — how one house can be destroyed while another a couple miles down the road doesn't get a drop near the front door. I watched this play out with my own friends: some had their homes damaged, and a few ended up sheltering with me during the storm. Years later, it made me wonder how much a factor like my neighborhood's retention pond in Coles Crossing actually plays into mitigating flooding — and what other factors might matter too.</p>
+      <p>This thought sent me down a deep rabbit hole of trying to discover what was at the bottom. In my journey down, I found that four agencies — TWDB, USGS, HGSD, and HCFCD — all track parts of the puzzle: groundwater levels, ground sinking, flooding. But the pieces exist scattered across four different systems, and no single source connects them. That gap is what this paper investigates: whether or not the public monitoring network in Cypress is on par with the growth and environmental change it has experienced since the mid-1980s.</p>
+      <p>Here's what I found. From the early 1900s to the present day, the Cypress area has not had subsidence stations, wells, and flooding data coexist to provide enough proof that the sinking of the ground causes flooding, with too many outside factors becoming involved, such as rainfall intensity and the addition of pavements.</p>
     </div>
 
     <div class="paper-section">
       <h3>2. Literature Review</h3>
-      <div class="paper-placeholder">In progress — drafted separately, being incorporated in Nathan's own words.</div>
+      <p>Five sources shape the background for this project.</p>
+      <p>Kasmarek, Johnson, and Ramage (2010) claim that subsidence directly worsens flooding, because it creates low-lying areas where water collects instead of draining away. This is based on USGS reports from their long-running study of the Chicot, Evangeline, and Jasper aquifers. This is important to my case because it's the earliest, most direct source connecting subsidence to flooding — a position most local agencies still reference today.</p>
+      <p>Kasmarek, Ramage, and Johnson (2016) documented 13 measuring stations built between 1973 and 1980, and found that one of them — the Addicks station — kept sinking even after regulation began cutting back groundwater pumping elsewhere. This matters to my case because it shows subsidence isn't uniform, hinting at differential subsidence, since each station shows its own rate rather than one shared trend. This connects directly to my own P018 and AULT data, which shows that same differential pattern.</p>
+      <p>Braun, Ramage, and Shah (2019) found parts of the Jasper aquifer dropped over 200 feet between 2000 and 2019. They concluded this from USGS's most recent regional water-level survey across Houston-Galveston. This matters because it shows this kind of decline isn't just limited to aquifers like Chicot and Evangeline — the same aquifers my own wells are drawn from — meaning a third, deeper aquifer is under similar pressure too.</p>
+      <p>Turco et al. (2025) confirms 1985 was a real regulatory turning point — the year HGSD reorganized into 8 zones — based on a century-long historical review of Houston-area groundwater and subsidence research. This matters because it's the exact same year my wells 65-03-204 and 65-03-206 stopped being monitored. Although the review doesn't explain why they were dropped, I later tried to fill that gap through direct outreach to TWDB, which was answered by Rebecca Storms — though even she had no conclusion as to why.</p>
+      <p>Talbott (2016), then the Executive Director of the Harris County Flood Control District, argued that uniform subsidence doesn't necessarily worsen flooding — only differential subsidence would, since uniform sinking lowers the whole floodplain together without changing how fast water drains. His claim was based on the district's own internal comparison of subsidence rates along Cypress Creek, not a published study, and it was disputed at the time by University of Houston geologist Shuhab Khan. This matters to my paper because it directly connects to my own subsidence data at P018 and AULT — both stations are sinking at different rates, not the same rate. By Talbott's own logic, that's exactly the condition under which subsidence would worsen flooding, since it's differential, not uniform.</p>
     </div>
 
     <div class="paper-section">
       <h3>3. Methods</h3>
-      <div class="paper-placeholder">In progress — how the data was collected, source by source.</div>
+      <p>This project combines data from four main public agencies, collected over two weeks in September 2026. Claude, an AI assistant, was used to query public APIs and navigate agency data tools under my direction — I decided which sources to pursue and evaluated what the data actually showed, while Claude handled the technical retrieval.</p>
+      <p>We obtained historical well records — including 6503204, 6503206, and 6503104 — from TWDB's Groundwater Database. I directed Claude to navigate TWDB's online report tool well by well, and checked its work at each step to make sure no errors occurred. One real setback came up: TWDB's county-wide search tool returned empty results due to what appears to be a bug on their end, so every well had to be looked up individually by its state well number instead.</p>
+      <p>I obtained live well data — 6503112, 6503113, 6503313, and 6059706 — by directing Claude to query USGS's public API directly using each site's monitoring location number. Claude also researched contact information at TWDB and USGS, surfacing Rebecca Storms, P.G. and Christopher Braun as relevant contacts, which led to the outreach email that got a direct response from Storms — she sent the full 206-point historical record for well 6503204 shortly after. One limitation worth noting: TWDB's hosted version of USGS data lags behind, since TWDB only includes "Approved" readings, not more recent "Provisional" data — so USGS's own site remains the more current source.</p>
+      <p>From HGSD, I obtained data on 12 subsidence stations — including P018, AULT, and P001 — covering total displacement, current sinking rate, and for two stations, full trend charts. I had Claude query HGSD's public feature service directly for the summary statistics; for P018 and AULT specifically, since no raw numeric download was available, the data points were estimated by eye from HGSD's official published chart images. There aren't many limitations here, but the digitized P018/AULT numbers aren't guaranteed to the exact decimal due to that limited accuracy.</p>
+      <p>From HCFCD, I obtained current water levels and flood-stage thresholds for 6 gages along Cypress Creek. The key find came from switching the tool to "Channel Status" and checking August 31, 2017 — the tail end of Hurricane Harvey. Two gages, 1165 (Eldridge Pkwy N.) and 1160 (Grant Road), both showed "Flooding Likely" at that exact moment, straight from the district's own record. To verify this in person, I visited Cypress Park and Russ Poppe Family Park, the sites nearest those gages, shortly after a rainfall, and photographed the actual water levels myself. One limitation: I tried pulling exact historical water-level numbers through HCFCD's API and hit a wall — it's blocked — so the Harvey status is solid, but precise peak numbers aren't included.</p>
+      <p>I also obtained flood insurance claims for both Cypress zip codes (77429 and 77433), covering 1978–2024, pulled through FEMA's OpenFEMA public API. One limitation here: the specific API version used has since been frozen by FEMA in favor of a newer version, and the 77429 query hit a 1,000-record cap, so later years for that zip code may be undercounted. For population and housing statistics used in the growth timeline, I relied on secondary sites reporting Census data rather than the Census Bureau directly, since pulling it firsthand was blocked by an API key requirement.</p>
+      <p>AI was used in this project, but not how most people think. Think of it as me as the general and Claude as the troop. Claude was used to query APIs, navigate agency websites and tools, and help structure my writing — I provided the raw facts and points, sometimes wrote first drafts myself, and Claude proposed phrasing based on what I gave it, which I then reviewed and adjusted. I directed where it went, decided which agencies and wells to look into, when to dig deeper, and what actually counted as a real finding. I also acted as the checker — when Claude came back with something, I made sure it was real and not fiction.</p>
     </div>
 
     <div class="paper-section">
       <h3>4. Findings</h3>
-      <div class="paper-placeholder">In progress — see the Evidence for Thesis tab for the data this section draws from.</div>
+      <p>Of the groundwater wells we tracked, only 6 of 20 showed real trends; each was declining, none were stable, and none were recovering, with the fastest — well 6503112 — declining at 10.6 ft/yr. Well 6503204 is worth mentioning specifically: thanks to a complete record obtained directly from Rebecca Storms at TWDB, this well shows depth dropping from about 6.5 ft to 59 ft below surface between 1931 and 1985, with a sharp, unexplained jump around 1952-53. Most of these wells are no longer actively monitored — only 4 remain live today (6503112, 6503113, 6503313, 6059706), all active sometime between 2020 and 2026.</p>
+      <p>The data shows 12 stations being monitored, with rates ranging between 0.89 to 2.38 cm/yr — not the same everywhere. P018 and AULT are the two sore thumbs of the situation: P018 has been sinking since the 2000s but is slowing down, while AULT has only been tracked since 2015 but is speeding up. Yet at this current day, they're roughly at the same speed (~1.9 cm/yr). These two trend lines were estimated by eye from the official published charts, since exact numbers weren't available.</p>
+      <p>The data pulled tracked the areas of zip codes 77429 and 77433. In 2016 they had 287 claims for water damage, and in 2017 it more than doubled that amount with 735 claims. Almost every other year on record was fewer than 100 claims going back to 1978, and remarkably, the $76 million paid out in 2017 alone was more than every other year combined. The hurdle that comes with this is that it only counts insured losses, so the actual numbers are probably much worse than the ones shown.</p>
+      <p>When looking at all the subgroups on one big timeline, they show almost no overlap. Wells were prominently tracked before 1985, but subsidence and flood data barely existed yet. In 2016-17, when the big flood happened, wells were nowhere to be seen, while subsidence stations had a prominent place by then. Not until 2020 did wells start to reappear — after the worst flood and most of the growth had already happened.</p>
     </div>
 
     <div class="paper-section">
       <h3>5. Discussion</h3>
-      <div class="paper-placeholder">In progress — the argument for the thesis, including the counterargument and what the data doesn't prove.</div>
+      <p>The lack of overlapping coverage gave researchers very little to compare data against, since one layer was always missing when another was strong. This 40-year gap was especially damaging because it happened during exactly the years Cypress grew the most. If the same gap had occurred between the 1930s and 1970s instead, it likely wouldn't have mattered as much, since change in aquifer levels would've been far less severe with fewer people drawing on the water. Instead, the 40 years with no active well tracking were the same 40 years Cypress grew from under 100 residents to over 200,000. Some of the most important data would have come from Hurricane Harvey, which demonstrated how and why flooding happened in this area — but because it hit during the well-monitoring gap, several data points that could have confirmed a connection simply don't exist. Even outside that gap, well monitoring overall was thin: 14 of the 20 wells found in this project never had enough readings to support a real conclusion.</p>
+      <p>There isn't enough evidence in this project to prove Talbott's condition is actually being met in a way that causes flooding — only that it's possible. The P018-vs-AULT data shows real differential subsidence in Cypress, but subsidence could just be one factor among several, not the whole explanation. Consider two areas: one with heavy pavement and high rainfall will likely flood more than another regardless of how much it's sinking. But if two areas had the same rainfall and the same amount of pavement, differential subsidence would become the deciding factor between them. This is a logical thought experiment, not something this project actually tested — no data here isolates rainfall and pavement to check whether subsidence alone explains the difference between any two specific areas.</p>
+      <p>The groundwater decline at each monitored well is proven — no ifs, ands, or buts. It's simply declining because water isn't replenishing as fast as it's being taken out. The subsidence in Cypress is differential, confirmed by the P018-vs-AULT data showing one area accelerating while another decelerates. Third, the three data layers never had strong coverage at the same time — wells stopped being tracked in 1985, while subsidence and flood-claims data didn't become reliable until well after that point. What isn't proven is that subsidence caused or worsened the 2016-2017 flood spike; Harvey was severe enough on its own to explain catastrophic flooding regardless of ground conditions.</p>
+      <p>Three confounds shape flooding beyond subsidence: rainfall — more rain simply means greater flood risk; pavement — since pavement is far less permeable than grass or open ground, water has nowhere to go but up; and drainage infrastructure — the worse a neighborhood's infrastructure, the more water sits stagnant instead of draining away. I think drainage infrastructure matters most in Cypress, based on what I've seen growing up. Driving past certain neighborhoods as a kid, my mom would point out how nice the houses were, yet they'd flood every time — even though we lived only a mile away and rarely flooded ourselves. A big reason for that difference was the retention pond next to our own neighborhood, and how well our streets could handle water compared to theirs.</p>
+      <p>At the end of the day, Cypress's monitoring network is out of date and out of touch — not because any single agency failed, but because wells, subsidence stations, and flood data were never built to work together, and the 40-year gap in well tracking happened during the exact years the area needed it most.</p>
     </div>
 
     <div class="paper-section">
       <h3>6. Conclusion</h3>
-      <div class="paper-placeholder">In progress.</div>
+      <p>The overlap between well data, subsidence stations, and flood-claims data is sparse — not enough to prove causation, but more than enough to show why Cypress's monitoring network is outdated. This finding matters most to the agencies themselves — TWDB, USGS, HGSD, and HCFCD — since this project groups their separate data together in one place, making it easier to see where monitoring gaps actually are and where new effort could go to help mitigate flooding from future storms. I'd recommend adding more live-tracked wells, to reconnect cause and effect. Wells were some of the weakest parts of the data due to how incomplete that layer was — 14 of the 20 wells had no usable trend data. Wells only measure why there would be subsidence, which is the taking of groundwater, not the sinking itself. GPS stations, like AULT, already track subsidence well.</p>
     </div>
 
     <div class="paper-section">
       <h3>7. Works Cited</h3>
-      <div class="paper-placeholder">In progress.</div>
+      <p style="font-size:0.85rem; color:var(--ink-soft); margin-bottom:16px;">Citation format may need adjusting to match a specific style guide (APA/MLA) before final submission.</p>
+      <ul class="cite-list">
+        <li>Kasmarek, M.C., Johnson, M.R., and Ramage, J.K., 2010, <i>Water-Level Altitudes 2010 and Water-Level Changes in the Chicot, Evangeline, and Jasper Aquifers, Houston-Galveston Region, Texas</i>: U.S. Geological Survey Scientific Investigations Map 3138.</li>
+        <li>Kasmarek, M.C., Ramage, J.K., and Johnson, M.R., 2016, <i>Water-Level Altitudes 2016 and Water-Level Changes in the Chicot, Evangeline, and Jasper Aquifers and Compaction 1973–2015 in the Chicot and Evangeline Aquifers, Houston-Galveston Region, Texas</i>: U.S. Geological Survey Scientific Investigations Map 3365.</li>
+        <li>Braun, C.L., Ramage, J.K., and Shah, S.D., 2019, <i>Status of Groundwater-Level Altitudes and Long-Term Groundwater-Level Changes in the Chicot, Evangeline, and Jasper Aquifers, Houston-Galveston Region, Texas, 2019</i>: U.S. Geological Survey Scientific Investigations Report 2019-5089.</li>
+        <li>Turco, M.J., et al., 2025, "A Century (1906–2024) of Groundwater and Land Subsidence Studies in Greater Houston Region: A Review," <i>Groundwater</i>, National Ground Water Association.</li>
+        <li>Talbott, M., interviewed in "Are Houston's Sinking Suburbs Suffering Worse Flooding?", <i>Houston Public Media</i>, May 23, 2016.</li>
+        <li>Storms, R., P.G., Manager, Groundwater Monitoring, Texas Water Development Board. Personal correspondence (email), September 2026.</li>
+        <li>Texas Water Development Board (TWDB), <i>Groundwater Database</i>. <a class="src" href="https://www3.twdb.texas.gov/apps/waterdatainteractive/GroundWaterDataViewer" target="_blank">twdb.texas.gov</a></li>
+        <li>U.S. Geological Survey (USGS), <i>Water Data for the Nation</i>. <a class="src" href="https://waterdata.usgs.gov/nwis" target="_blank">waterdata.usgs.gov</a></li>
+        <li>Harris-Galveston Subsidence District (HGSD). <a class="src" href="https://hgsubsidence.org/" target="_blank">hgsubsidence.org</a></li>
+        <li>Harris County Flood Control District (HCFCD), <i>Flood Warning System</i>. <a class="src" href="https://www.harriscountyfws.org/" target="_blank">harriscountyfws.org</a></li>
+        <li>Federal Emergency Management Agency (FEMA), OpenFEMA, <i>NFIP Redacted Claims v3</i>. <a class="src" href="https://www.fema.gov/openfema-data-page/nfip-redacted-claims-v3" target="_blank">fema.gov</a></li>
+      </ul>
     </div>
   </div>
 </div>
