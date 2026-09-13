@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cypress Groundwater &amp; Subsidence Explorer</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  :root{
+    --paper:#F6F3EC;
+    --ink:#1E2A26;
+    --ink-soft:#54615C;
+    --line:#D9D2C0;
+    --water:#2B6777;
+    --water-soft:#DCE9EA;
+    --ground:#AE5A28;
+    --ground-soft:#F2E1D3;
+    --creek:#3E6E4A;
+    --creek-soft:#E1EAE0;
+    --gap:#B7ADA0;
+    --card:#FFFEFB;
+    --live:#C0392B;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family: "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    background:var(--paper);
+    color:var(--ink);
+  }
+  .app{
+    display:grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    height:100vh;
+  }
+  header{
+    padding:16px 24px 12px;
+    border-bottom:1px solid var(--line);
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  header h1{
+    margin:0;
+    font-size:1.3rem;
+    font-weight:600;
+    letter-spacing:0.01em;
+  }
+  header .sub{
+    font-family:"Courier New",monospace;
+    font-size:0.75rem;
+    color:var(--ink-soft);
+  }
+  .legend{
+    display:flex;
+    gap:16px;
+    font-family:"Courier New",monospace;
+    font-size:0.68rem;
+    color:var(--ink-soft);
+    align-items:center;
+    flex-wrap:wrap;
+    max-width:640px;
+  }
+  .legend .dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px;}
+  .legend .tri{
+    display:inline-block;width:0;height:0;
+    border-left:6px solid transparent;
+    border-right:6px solid transparent;
+    border-bottom:10px solid var(--ground);
+    margin-right:5px;
+    vertical-align:-1px;
+  }
+  .legend .sq{
+    display:inline-block;width:9px;height:9px;
+    background:var(--creek);
+    margin-right:5px;
+    vertical-align:-1px;
+  }
+  main{
+    display:grid;
+    grid-template-columns: 1.5fr 1fr;
+    min-height:0;
+  }
+  #map{ height:100%; width:100%; background:#eee; }
+  aside{
+    border-left:1px solid var(--line);
+    overflow-y:auto;
+    padding:20px 22px 40px;
+    background:var(--card);
+  }
+  aside h2{
+    font-size:1.05rem;
+    margin:0 0 2px;
+  }
+  aside .kicker{
+    font-family:"Courier New",monospace;
+    font-size:0.72rem;
+    color:var(--ink-soft);
+    margin-bottom:16px;
+  }
+  .empty-state{
+    color:var(--ink-soft);
+    line-height:1.55;
+    font-size:0.95rem;
+  }
+  .empty-state b{color:var(--ink);}
+  .back-link{
+    display:inline-block;
+    font-family:"Courier New",monospace;
+    font-size:0.72rem;
+    color:var(--water);
+    cursor:pointer;
+    margin-bottom:10px;
+    text-decoration:none;
+  }
+  .back-link:hover{ text-decoration:underline; }
+  .loc-group-title{
+    font-family:"Courier New",monospace;
+    font-size:0.72rem;
+    letter-spacing:0.03em;
+    margin:20px 0 8px;
+    padding-bottom:4px;
+    border-bottom:1px solid var(--line);
+  }
+  .loc-group-title:first-of-type{ margin-top:4px; }
+  .loc-item{
+    display:flex;
+    align-items:baseline;
+    gap:8px;
+    padding:7px 4px;
+    cursor:pointer;
+    border-bottom:1px solid var(--line);
+    font-size:0.88rem;
+  }
+  .loc-item:hover{ background:var(--paper); }
+  .loc-dot{
+    display:inline-block;
+    width:9px;height:9px;
+    border-radius:50%;
+    flex:none;
+  }
+  .loc-tri{
+    width:0;height:0;
+    border-radius:0;
+    border-left:5px solid transparent;
+    border-right:5px solid transparent;
+    border-bottom:8px solid var(--ground);
+    background:none !important;
+  }
+  .loc-sub{
+    color:var(--ink-soft);
+    font-size:0.78rem;
+    margin-left:auto;
+    text-align:right;
+    white-space:nowrap;
+  }
+  table.meta{
+    width:100%;
+    border-collapse:collapse;
+    margin:14px 0 20px;
+    font-size:0.85rem;
+  }
+  table.meta td{
+    padding:5px 0;
+    border-bottom:1px solid var(--line);
+    vertical-align:top;
+  }
+  table.meta td:first-child{
+    color:var(--ink-soft);
+    width:42%;
+    font-family:"Courier New",monospace;
+    font-size:0.75rem;
+    padding-right:10px;
+  }
+  .chart-wrap{
+    background:var(--water-soft);
+    border-radius:2px;
+    padding:14px 10px 6px;
+    margin-bottom:14px;
+  }
+  .chart-wrap.ground{ background:var(--ground-soft); }
+  .badge-live{
+    display:inline-block;
+    background:var(--live);
+    color:#fff;
+    font-family:"Courier New",monospace;
+    font-size:0.65rem;
+    padding:2px 7px;
+    border-radius:2px;
+    margin-left:8px;
+    vertical-align:2px;
+    letter-spacing:0.03em;
+  }
+  .note{
+    font-size:0.78rem;
+    color:var(--ink-soft);
+    line-height:1.5;
+    border-left:2px solid var(--line);
+    padding-left:10px;
+    margin-top:10px;
+  }
+  .epistemic-tag{
+    display:inline-block;
+    font-family:"Courier New",monospace;
+    font-size:0.62rem;
+    font-weight:bold;
+    letter-spacing:0.03em;
+    padding:1px 6px;
+    border-radius:2px;
+    margin-right:7px;
+    vertical-align:1px;
+    white-space:nowrap;
+  }
+  .epistemic-tag.confirmed{ background:var(--water-soft); color:var(--water); }
+  .epistemic-tag.interpretation{ background:#F5EBD0; color:#8A6D08; }
+  .epistemic-tag.alt-explanation{ background:var(--ground-soft); color:var(--ground); }
+  .epistemic-tag.hypothesis{ background:#EAE5DC; color:#7A6F5F; }
+  .flood-flag{
+    background:#F7E3E0;
+    border-left:2px solid var(--live);
+    padding:10px 12px;
+    font-size:0.85rem;
+    margin:10px 0 14px;
+    line-height:1.5;
+  }
+  .no-data{
+    font-size:0.9rem;
+    color:var(--ink-soft);
+    font-style:italic;
+    padding:16px 0;
+  }
+  a.src{ color:var(--water); }
+  .leaflet-popup-content{ font-family:"Iowan Old Style",Georgia,serif; font-size:0.85rem; }
+  .leaflet-popup-content b{ display:block; margin-bottom:2px; }
+
+  .tabs{
+    display:flex;
+    gap:2px;
+  }
+  .tab-btn{
+    font-family:"Courier New",monospace;
+    font-size:0.75rem;
+    letter-spacing:0.02em;
+    background:none;
+    border:1px solid var(--line);
+    color:var(--ink-soft);
+    padding:7px 14px;
+    cursor:pointer;
+  }
+  .tab-btn.active{
+    background:var(--ink);
+    color:var(--paper);
+    border-color:var(--ink);
+  }
+
+  #evidence{
+    display:none;
+    overflow-y:auto;
+    padding:28px 40px 60px;
+    max-width:980px;
+    margin:0 auto;
+  }
+  #evidence h2{ font-size:1.4rem; margin:0 0 4px; }
+  #evidence .lede{ color:var(--ink-soft); font-size:0.92rem; margin-bottom:28px; max-width:640px; }
+  #paper{
+    display:none;
+    overflow-y:auto;
+    padding:28px 40px 80px;
+    max-width:760px;
+    margin:0 auto;
+  }
+  #paper h2{ font-size:1.4rem; margin:0 0 4px; }
+  #paper .lede{ color:var(--ink-soft); font-size:0.92rem; margin-bottom:28px; }
+  .paper-section{
+    margin-bottom:30px;
+    padding-bottom:22px;
+    border-bottom:1px solid var(--line);
+  }
+  .paper-section h3{
+    font-size:1.1rem;
+    margin:0 0 10px;
+  }
+  .lit-q{
+    font-family:"Courier New",monospace;
+    font-size:0.85rem;
+    font-weight:bold;
+    color:var(--water);
+    margin:20px 0 10px;
+    letter-spacing:0.01em;
+  }
+  .lit-q:first-of-type{ margin-top:4px; }
+  .paper-section p{
+    font-size:0.95rem;
+    line-height:1.65;
+    margin:0 0 14px;
+  }
+  .paper-placeholder{
+    font-size:0.9rem;
+    color:var(--ink-soft);
+    font-style:italic;
+    background:var(--paper);
+    border:1px dashed var(--line);
+    padding:14px 16px;
+  }
+  .cite-list{
+    margin:0;
+    padding-left:22px;
+  }
+  .cite-list li{
+    font-size:0.9rem;
+    line-height:1.6;
+    margin-bottom:14px;
+  }
+  .rules-table{
+    width:100%;
+    border-collapse:collapse;
+    font-size:0.88rem;
+    margin:12px 0 18px;
+  }
+  .rules-table th, .rules-table td{
+    text-align:left;
+    padding:6px 10px;
+    border-bottom:1px solid var(--line);
+  }
+  .rules-table th{ color:var(--ink-soft); font-weight:600; font-size:0.8rem; }
+  .ai-list{
+    margin:6px 0 16px;
+    padding-left:22px;
+  }
+  .ai-list li{
+    font-size:0.95rem;
+    line-height:1.6;
+    margin-bottom:6px;
+  }
+  .ai-list-label{
+    font-family:"Courier New",monospace;
+    font-size:0.8rem;
+    font-weight:bold;
+    color:var(--ink-soft);
+    margin:14px 0 4px;
+  }
+  .thesis-box{
+    background:var(--water-soft);
+    border-left:3px solid var(--water);
+    padding:16px 20px;
+    font-size:1.02rem;
+    line-height:1.55;
+    margin:0 0 32px;
+  }
+  .thesis-box .label{
+    font-family:"Courier New",monospace;
+    font-size:0.68rem;
+    color:var(--water);
+    letter-spacing:0.04em;
+    display:block;
+    margin-bottom:8px;
+  }
+  .evidence-block{ margin-bottom:36px; }
+  .evidence-block h3{
+    font-size:1.05rem;
+    margin:0 0 6px;
+    border-bottom:1px solid var(--line);
+    padding-bottom:8px;
+  }
+  .evidence-block .finding{
+    font-size:0.9rem;
+    color:var(--ink-soft);
+    margin-bottom:14px;
+    line-height:1.5;
+  }
+  .evidence-chart-wrap{
+    background:var(--card);
+    border:1px solid var(--line);
+    padding:16px 14px 8px;
+    margin-bottom:12px;
+  }
+  table.coverage{
+    width:100%;
+    border-collapse:collapse;
+    font-size:0.85rem;
+    margin-top:8px;
+  }
+  table.coverage th{
+    text-align:left;
+    font-family:"Courier New",monospace;
+    font-size:0.68rem;
+    color:var(--ink-soft);
+    border-bottom:1px solid var(--line);
+    padding:6px 8px;
+  }
+  table.coverage td{
+    padding:8px;
+    border-bottom:1px solid var(--line);
+  }
+  .cov-strong{ color:var(--water); font-weight:bold; }
+  .cov-weak{ color:#B7900A; }
+  .cov-none{ color:var(--live); }
+
+  .photo-gallery{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:16px;
+    margin:14px 0;
+  }
+  .photo-gallery figure{ margin:0; }
+  .photo-gallery img{
+    width:100%;
+    height:auto;
+    display:block;
+    border:1px solid var(--line);
+    cursor:zoom-in;
+    transition:opacity 0.15s;
+  }
+  .photo-gallery img:hover{ opacity:0.85; }
+  .photo-gallery figcaption{
+    font-size:0.78rem;
+    color:var(--ink-soft);
+    margin-top:6px;
+    line-height:1.4;
+  }
+  @media (max-width: 700px){
+    .photo-gallery{ grid-template-columns: 1fr; }
+  }
+  #lightbox{
+    display:none;
+    position:fixed;
+    top:0; left:0; right:0; bottom:0;
+    background:rgba(30,42,38,0.92);
+    z-index:1000;
+    align-items:center;
+    justify-content:center;
+    cursor:zoom-out;
+    padding:30px;
+  }
+  #lightbox.open{ display:flex; }
+  #lightbox img{
+    max-width:100%;
+    max-height:85vh;
+    box-shadow:0 4px 24px rgba(0,0,0,0.4);
+  }
+  #lightbox .lb-caption{
+    position:absolute;
+    bottom:24px;
+    left:0; right:0;
+    text-align:center;
+    color:#fff;
+    font-size:0.85rem;
+    padding:0 40px;
+  }
+  #lightbox .lb-close{
+    position:absolute;
+    top:18px; right:26px;
+    color:#fff;
+    font-size:1.8rem;
+    font-family:"Courier New",monospace;
+    cursor:pointer;
+  }
+  .photo-badge{
+    display:inline-block;
+    font-size:0.85rem;
+    margin-left:6px;
+    cursor:pointer;
+    vertical-align:1px;
+  }
+  .photo-cta{
+    display:inline-block;
+    margin-top:10px;
+    font-family:"Courier New",monospace;
+    font-size:0.72rem;
+    color:var(--live);
+    cursor:pointer;
+    border:1px solid var(--live);
+    padding:5px 10px;
+    background:#F7E3E0;
+  }
+  .photo-cta:hover{ background:var(--live); color:#fff; }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <h1>Cypress Groundwater &amp; Subsidence Explorer</h1>
+      <div class="sub">Harris County, TX · Chicot, Evangeline &amp; Jasper aquifers</div>
+    </div>
+    <div class="tabs">
+      <button class="tab-btn active" id="tabMapBtn" onclick="showTab('map')">MAP EXPLORER</button>
+      <button class="tab-btn" id="tabEvidenceBtn" onclick="showTab('evidence')">EVIDENCE FOR THESIS</button>
+      <button class="tab-btn" id="tabPaperBtn" onclick="showTab('paper')">RESEARCH PAPER</button>
+    </div>
+    <div class="legend">
+      <span><span class="dot" style="background:var(--water)"></span>well: data on record</span>
+      <span><span class="dot" style="background:var(--gap)"></span>well: no trend data</span>
+      <span><span class="tri"></span>subsidence station</span>
+      <span><span class="sq"></span>creek gage</span>
+    </div>
+  </header>
+  <main id="mapMain">
+    <div id="map"></div>
+    <aside id="panel">
+      <div class="empty-state">Loading…</div>
+    </aside>
+  </main>
+  <div id="evidence">
+    <h2>Evidence for the Thesis</h2>
+    <div class="lede">This page lays out the three data layers side by side, on the same timeline, to show what actually overlaps, and what doesn't.</div>
+
+    <div class="thesis-box">
+      <span class="label">THESIS</span>
+      Cypress groundwater monitoring has met the continuity benchmark I set for this project since 1985 (at least two wells monitored every year with a record solid enough to show a trend), but the trend data can't say the same. Inside zip codes 77429 and 77433, the boundary that matches my flood data, coverage has fallen a whopping 71%, and today it's holding on by just a couple fingers, with only two wells left that clear the bar. That is a margin of zero against a benchmark of two. Population across the area has climbed past 200,000, which only makes the shrinking coverage harder to justify. But another problem lies beneath the tools: TWDB's own public search fails outright, and not just by limiting results; it returns nothing at all. The only way around it, searching well by well, still turned up just roughly a quarter of the wells that actually exist.
+    </div>
+
+    <div class="evidence-block">
+      <h3>1. Coverage over time: where the three layers do and don't overlap</h3>
+      <div class="finding">Wells 6503204 and 6503206 were well-monitored pre-1985, and subsidence/flood-claims data barely existed yet at that point. <b>Correction (found during a later review of this project):</b> an earlier version of this page implied no wells were tracked at all after 1985; that's not accurate. Well 6503104 continued being monitored through 2008, over two decades past the other two. It stopped before the 2016-17 flood spike. <b>Second correction (Sept 2026, from the full TWDB inventory):</b> an earlier version of this page said no well was being actively tracked during Harvey. That was true only of the small well set this page displays, not of the area. Across the study grids, 8 wells were measured in 2016 and 13 in 2017, and 3 of them carried a trend-bearing record throughout. The real pattern is not a measurement blackout; it is that trend-bearing coverage had already thinned to 3 wells by 2015 and has stayed there.</div>
+      <div class="evidence-chart-wrap"><canvas id="timelineChart" height="110"></canvas></div>
+      <table class="coverage">
+        <tr><th>Period</th><th>Wells</th><th>Subsidence</th><th>Flood claims</th></tr>
+        <tr><td>1985–1995</td><td class="cov-mod">8 to 14 measured/yr; 7 down to 5 trend-bearing</td><td class="cov-none">None</td><td class="cov-weak">Sparse</td></tr>
+        <tr><td>1996–2007</td><td class="cov-mod">1 to 14 measured/yr; 5 down to 4 trend-bearing</td><td class="cov-weak">Starting (first station 1994)</td><td class="cov-weak">Sparse</td></tr>
+        <tr><td>2008–2015</td><td class="cov-weak">1 to 11 measured/yr; 3 down to 2 trend-bearing</td><td class="cov-mod">Growing</td><td class="cov-mod">Moderate</td></tr>
+        <tr><td>2016–2017</td><td class="cov-weak">3 to 5 measured/yr; 2 trend-bearing</td><td class="cov-strong">Strong</td><td class="cov-strong">Extreme spike</td></tr>
+        <tr><td>2018–2024</td><td class="cov-weak">3 to 8 measured/yr; 2 trend-bearing</td><td class="cov-strong">Strong</td><td class="cov-weak">Low (post-peak)</td></tr>
+        <tr><td>2025–2026</td><td class="cov-none">0 reported (probable TWDB publication lag, not confirmed)</td><td class="cov-strong">Strong</td><td class="cov-weak">Low</td></tr>
+        
+      </table>
+      <div class="note">This correction came out of running an independent adversarial review on this project's own claims (full process described in the Research Paper tab).</div>
+    </div>
+
+    <div class="evidence-block">
+      <h3>2. FEMA flood insurance claims, 1978–2024: the actual spike</h3>
+      <div class="finding">Real claims data for both Cypress zip codes (77429, 77433), combined by year. 2016 and 2017 are not a small bump: against the next-highest year on record (1998, 80 claims), they're roughly 3.6x and 9.2x. This is the single largest signal in the entire dataset, and it lands squarely in the years wells were dark. <i>Note: the 77429 API query hit its 1,000-record cap, so its later years may be undercounted; 77433 is complete.</i></div>
+      <div class="evidence-chart-wrap"><canvas id="femaChart" height="110"></canvas></div>
+      <table class="coverage">
+        <tr><th>Year</th><th>Combined claims</th><th>Total paid</th></tr>
+        <tr><td>2016</td><td class="cov-strong">287</td><td>$22.3M</td></tr>
+        <tr><td>2017 (Harvey)</td><td class="cov-strong">735</td><td>$76.0M</td></tr>
+        <tr><td>1994 (comparison)</td><td>56</td><td>$2.9M</td></tr>
+        <tr><td>1998 (comparison)</td><td>80</td><td>$2.9M</td></tr>
+        <tr><td>2001 (comparison)</td><td>79</td><td>$2.1M</td></tr>
+      </table>
+    </div>
+
+    <div class="evidence-block">
+      <h3>3. Differential subsidence: the mechanism the thesis depends on</h3>
+      <div class="finding">P018 and AULT sit only a few miles apart but move at different paces: P018 has been sinking since 2000 and is now decelerating; AULT only started being tracked in 2015 and is accelerating. Both landed at a similar 2025 rate (~1.9 cm/yr) by very different paths, real evidence subsidence is not uniform across Cypress, which is the condition under which subsidence could plausibly worsen flooding (per the Talbott/HGSD debate in the literature review). But neither station has a matched well or flood-claims record at that same specific point, so the link stops at correlation.</div>
+      <div class="evidence-chart-wrap"><canvas id="stationCompareChart" height="110"></canvas></div>
+    </div>
+
+    <div class="evidence-block">
+      <h3>4. What this does and doesn't prove</h3>
+      <div class="finding">
+        <b>Supported by data:</b> groundwater is declining at every tracked well; subsidence is real, ongoing, and differential by location; flood losses spiked severely in 2016–2017.<br><br>
+        <b>Not supported by data:</b> that subsidence specifically (as opposed to rainfall intensity, new impervious surface from development, or aging drainage infrastructure) caused the 2016–2017 flood spike. No dataset here isolates subsidence's contribution from those other factors.
+      </div>
+    </div>
+
+    <div class="evidence-block">
+      <h3>5. Corrections log</h3>
+      <div class="finding">In Sept 2026, this project's own claims were run through an independent AI-assisted adversarial and constructive review process (documented in the Methods section) to find errors before treating any conclusion as final. That process caught real mistakes, listed here rather than quietly fixed:</div>
+      <table class="coverage">
+        <tr><th>Original claim</th><th>What was actually wrong</th><th>Correction</th></tr>
+        <tr><td>Coverage timeline chart</td><td>One data line used placeholder/illustrative numbers, not real ones, labeled that only in code, not on the page</td><td>Removed the placeholder line; chart now shows only real, counted data</td></tr>
+        <tr><td>"No wells tracked after 1985"</td><td>Well 6503104 was actually still being monitored through 2008</td><td>Coverage table and text corrected to reflect the real timeline</td></tr>
+        <tr><td>"Flooding Likely" gages during Harvey</td><td>Paper said gages 1165 and 1160; the actual confirmed pair was 1165 and 1170</td><td>Paper corrected; noted that the Russ Poppe field visit (near 1160) wasn't actually at a confirmed-flooded gage</td></tr>
+        <tr><td>"LIVE" badge on active wells</td><td>Implied real-time data; this site is actually a fixed snapshot</td><td>Relabeled to "USGS Active Site," added an explicit data-freshness note</td></tr>
+        <tr><td>"2016/2017 claims are 10-50x other years"</td><td>Didn't hold up against the site's own comparison table; real figure is closer to 3.6x-9.2x vs. the next-highest year</td><td>Corrected to the accurate comparison</td></tr>
+      </table>
+      <div class="finding" style="margin-top:18px;">A second round of corrections came out of the full thesis rebuild (Sept 2026): pulling the complete TWDB well inventory, rebuilding the map dataset from it, and fact-checking every section of the paper against it turned up its own mistakes, also kept here rather than fixed quietly:</div>
+      <table class="coverage">
+        <tr><th>Original claim</th><th>What was actually wrong</th><th>Correction</th></tr>
+        <tr><td>Findings: "fastest well 6503112, declining at 10.6 ft/yr"</td><td>Computed from just 2 readings, 2 years apart; nowhere near this project's own trend floor (5+ readings across 10+ years)</td><td>Findings rewritten around the rebuilt tiered dataset; the real fastest full-lifetime decliner is well 6503811 at 9.84 ft/yr</td></tr>
+        <tr><td>Evidence-tab well set (Map Explorer)</td><td>Only about 20 hand-picked wells shown, not ranked, with no stated reason for those particular wells; some no longer show a real trend</td><td>Rebuilt from the full 286-well TWDB inventory: 20 full-lifetime wells ranked strongest-to-weakest by trend, plus 3 more that only clear the trend floor in a 2000-2024 window and are recovering</td></tr>
+        <tr><td>Evidence tab's "WORKING THESIS" box</td><td>Still showed the paper's original, since-abandoned thesis after the actual thesis was rewritten in the Research Paper tab</td><td>Synced to the locked thesis wording used everywhere else on the page</td></tr>
+        <tr><td>P018/AULT station P001: "longest record in the area, 32 years"</td><td>Two other regional stations (NETP, ADKS) actually run slightly longer</td><td>Reworded to "longest-running of the stations shown here, at 31.7 years"</td></tr>
+      </table>
+      <div class="finding" style="margin-top:18px;">A third round came out of running two independent AI reviews (constructive and adversarial) on the rebuilt version, then checking every flagged item against the source inventory rather than accepting it. Some of what the reviews flagged was wrong; what follows is what survived checking, plus what the checking turned up on its own:</div>
+      <table class="coverage">
+        <tr><th>Original claim</th><th>What was actually wrong</th><th>Correction</th></tr>
+        <tr><td>"No well in this dataset was being actively tracked during Harvey"</td><td>True only of the small well set displayed on this page, not of the area. The inventory shows 8 wells measured in 2016 and 13 in 2017</td><td>Rewritten to say what the record actually shows: not a measurement blackout, but trend-bearing coverage already thinned to its floor by 2015</td></tr>
+        <tr><td>Coverage chart (both series) and the coverage table</td><td>Hand-entered numbers matching no dataset, under a code comment claiming they were "counted from this project's own dataset." The chart showed 3 wells in 1985 and 4 in 2025; the real figures are 7 and 0. Stations showed 12 where 8 exist</td><td>Both series regenerated from the source data, the table rebuilt, and the chart's provenance comment rewritten to say exactly where each series comes from and which one is not yet reproducible</td></tr>
+        <tr><td>Thesis: "coverage has fallen 77%... only two wells left"</td><td>Two real numbers from two different boundaries presented as one finding. 77% is the grid figure (13 to 3); two wells is the zip-code figure (7 to 2, a 71% fall)</td><td>The paper now reports the zip-code boundary throughout, because it is the boundary that matches the flood-claims data, and names the grid figure alongside it instead of blending them</td></tr>
+        <tr><td>Findings: the 3 post-2000 wells "fail that same floor over their full lifetime"</td><td>Impossible as written. A full record always has at least as many readings over at least as long a span as any window inside it, so only the R&sup2; part can fail</td><td>Restated as what actually happens: they fail the R&sup2; requirement over their full record (0.17, 0.39, 0.26) and clear the identical floor within 2000-2024. The same error appeared a second time in the Discussion, where they were also called "newer" and "too short"; they begin in 1964, 1977 and 1978</td></tr>
+        <tr><td>Findings: "none show recovery"; only 3 recovering wells presented</td><td>Understated the project's own result. 8 of 16 usable post-2000 records are recovering on the grid boundary, 5 of 8 inside the zip codes</td><td>Recovery now reported at full scope, with the caveat that most of those slopes fit too poorly to rank</td></tr>
+        <tr><td>Well 6503104: "~85 readings", "roughly tenfold acceleration"</td><td>The record holds 115 readings, and the acceleration is about sixteenfold (0.77 to 12.07 ft/yr). It also clears Tier A on the numbers while being held out of the ranking</td><td>All three corrected, and the exclusion restated as a judgment about record shape rather than record strength</td></tr>
+        <tr><td>Cypress Creek gage levels: "current level shown is a live reading"</td><td>The values are fixed constants written into the page; nothing was being fetched</td><td>Relabelled as a dated snapshot, with readers pointed to HCFCD for current conditions</td></tr>
+        <tr><td>Subsidence station P007: "longest nearby record"</td><td>Undefined superlative, and P001 (1994) starts earlier than P007 (1999)</td><td>Replaced with the station's actual start year</td></tr>
+        <tr><td>"20 of the 85 wells that actually exist, roughly a quarter"</td><td>85 is the count inside the two zip codes; the wider study grids hold 157. The same ratio is a quarter or an eighth depending on which is meant, and neither is "wells that actually exist" (TWDB's database holds selected wells, not a census)</td><td>Both denominators now named by boundary wherever the ratio appears</td></tr>
+        <tr><td>Adequacy framed as a standard the network needed to meet</td><td>The two-well bar is this project's own, set in advance. Passing it shows continuity, not that the network is adequate for the area or well distributed across it</td><td>Renamed throughout to a continuity benchmark set by this project, with the distinction stated</td></tr>
+      </table>
+      <div class="note"><b>Both open items above are now closed.</b> They are kept here because how they were closed matters more than the fact that they were.
+      <br><br><b>1. The coverage figure is now reproducible.</b> The trend-bearing rule behind the 71% had been applied consistently but never written down, which meant nobody, including me, could regenerate it from the raw data. Working backwards from the published series recovered it: a well counts for a year if it has 5+ measurements over a 10+ year span, evenly spread (largest gap between consecutive measurement years no more than twice the mean gap), and its record brackets that year. Rebuilt from TWDB's raw file, that rule reproduces the published series exactly, all 40 years, on both the zip and grid boundaries. It is now stated in Methods and the chart is generated from it.
+      <br><br>One consequence is worth stating plainly, because it cuts against a criticism both AI reviews made. Neither review had the rule in front of it, and both assumed the coverage figure was filtered by R&sup2;, which would have meant the headline partly measured "how many records look linear" rather than "how many records exist and are regularly sampled." <b>There is no R&sup2; term in the rule.</b> R&sup2; only ever affected the separate A/B/C tier ranking. The objection was reasonable given what was published, and it was wrong, and it was only answerable because the rule got written down.
+      <br><br><b>2. Well 6503811's two slopes are both correct.</b> The page says 9.84 ft/yr and the inventory file says 9.35. Recomputing from TWDB's raw records reproduces both exactly: 9.844 from the decimal measurement date, 9.351 from the integer measurement year. Different time resolution, same well, no error. The date basis is now stated in Methods. The 112 ft jump between the 1992 and 1993 readings is also real: both are USGS steel-tape measurements marked publishable in TWDB's database, so it is a genuine feature of the record rather than a transcription error, and it remains unexplained.</div>
+      <div class="note">This log stays even after fixes are made; the goal is showing the correction process, not hiding that mistakes happened.</div>
+    </div>
+
+    <div class="evidence-block">
+      <h3>6. Field documentation: site visit, Sept 2026</h3>
+      <div class="finding">Primary-source photos taken in person, not from a database, at all three planned stops.</div>
+
+      <div class="note" id="photos-well-site" style="margin-bottom:10px;"><b>Stop 1: Historical well site.</b> Site of wells 65-03-204 and 65-03-206 (monitored 1931/1957–1985). Correction to an earlier assumption in this project: this parcel is <b>commercial/business land, not a residential subdivision</b> as originally guessed. TWDB later confirmed by email that both wells were USGS-operated sites, and that TWDB has no record of why monitoring stopped in 1985, though it suspects the wells were plugged due to age, not necessarily connected to HGSD's 1985 regulatory reorganization as this project first assumed. Two corrections in one stop: a good reminder that assumptions need checking, whether against a satellite map or an agency's own records.</div>
+      <div class="photo-gallery">
+        <figure>
+          <img src="well-site-1.jpg" alt="Site of wells 6503204/6503206, parking lot and storm drain">
+          <figcaption>Parking lot and storm drain grate on the well site parcel, facing the perimeter fence.</figcaption>
+        </figure>
+        <figure>
+          <img src="well-site-2.jpg" alt="Site of wells 6503204/6503206, fence line and fire hydrant">
+          <figcaption>Same fence line, further along: fire hydrant and brushy vacant ground behind the chain-link, commercial building visible beyond.</figcaption>
+        </figure>
+      </div>
+
+      <div class="note" id="photos-cypress-park" style="margin:18px 0 10px;"><b>Stop 2: Cypress Park</b> (near Gage 1165, Cypress Creek @ Eldridge Pkwy N.). Wide, calm lake within the park, crossed by a wooden pedestrian bridge. Checklist: water brownish, mostly still; a small channel actively feeding into the lake was visible; litter present (bottle, shoe) near the waterline; wildlife present (egret).</div>
+      <div class="photo-gallery">
+        <figure>
+          <img src="cypress-park-1.jpg" alt="Cypress Park lake with pedestrian bridge">
+          <figcaption>Main lake, facing the wooden pedestrian bridge. Litter visible in the grass at the water's edge.</figcaption>
+        </figure>
+        <figure>
+          <img src="cypress-park-2.jpg" alt="Cypress Park inflow channel feeding the lake">
+          <figcaption>A small channel actively feeding into the lake through the grass, visible flow, not just standing water.</figcaption>
+        </figure>
+        <figure>
+          <img src="cypress-park-3.jpg" alt="Cypress Park, egret at water's edge near park facilities">
+          <figcaption>Egret at the water's edge, with park sports facilities visible in the background.</figcaption>
+        </figure>
+      </div>
+
+      <div class="note" id="photos-russ-poppe" style="margin:18px 0 10px;"><b>Stop 3: Russ Poppe Family Park</b> (near Gage 1160, Cypress Creek @ Grant Road). <b>Correction:</b> gage 1160 was not actually one of the two gages confirmed "Flooding Likely" during Harvey; that was gage 1170 (Huffmeister Road), a route-planning error caught during a later review of this project. This stop still documents real, useful site conditions, just not a verified Harvey flood point. Separately, the water here is <b>a wooded pond adjacent to the park, not a paved trail directly along Cypress Creek</b> as assumed when this stop was planned. Water is noticeably darker/more tannic (brownish-green) than at Cypress Park, banks are natural and wooded rather than mowed, with a sandy edge visible on the far shore.</div>
+      <div class="photo-gallery">
+        <figure>
+          <img src="russ-poppe-1.jpg" alt="Wooded pond near Russ Poppe Family Park">
+          <figcaption>Wooded pond adjacent to the park, natural banks, sandy far shore, no visible current.</figcaption>
+        </figure>
+        <figure>
+          <img src="russ-poppe-2.jpg" alt="Wooded pond near Russ Poppe Family Park, closer view">
+          <figcaption>Closer view through tree branches, darker, more tannic water color than at Cypress Park.</figcaption>
+        </figure>
+      </div>
+      <div class="note">Checked against satellite mapping: Russ Poppe Family Park actually has two separate water features: Cypress Creek itself (a winding channel along the park's edge) and two distinct rounded ponds inside the park boundary. Based on the contained, oval shape and lack of visible current in these photos, this is most likely <b>one of the park's ponds, not Cypress Creek's main channel</b>, so it should not be cited as a direct stand-in for gage 1160's readings. It's still valid documentation of the park and surrounding water conditions, just not the creek channel itself.</div>
+    </div>
+
+    <div class="evidence-block">
+      <h3>7. Sources &amp; how to verify this yourself</h3>
+      <div class="finding">Every number on this site traces back to a public agency source. Click a well, station, or gage on the Map Explorer tab for a source link specific to that item. General sources below:</div>
+      <table class="coverage">
+        <tr><th>Layer</th><th>Agency</th><th>Verify at</th></tr>
+        <tr><td>Wells</td><td>Texas Water Development Board (TWDB)</td><td><a class="src" href="https://www3.twdb.texas.gov/apps/waterdatainteractive/GroundWaterDataViewer" target="_blank">TWDB Groundwater Data Viewer</a></td></tr>
+        <tr><td>Live wells</td><td>U.S. Geological Survey (USGS)</td><td><a class="src" href="https://waterdata.usgs.gov/nwis" target="_blank">USGS Water Data for the Nation</a></td></tr>
+        <tr><td>Subsidence</td><td>Harris-Galveston Subsidence District (HGSD)</td><td><a class="src" href="https://hgsubsidence.org/science-research/measuring-subsidence/" target="_blank">hgsubsidence.org</a></td></tr>
+        <tr><td>Creek gages</td><td>Harris County Flood Control District (HCFCD)</td><td><a class="src" href="https://www.harriscountyfws.org/" target="_blank">Harris County Flood Warning System</a></td></tr>
+        <tr><td>Flood claims</td><td>FEMA (OpenFEMA)</td><td><a class="src" href="https://www.fema.gov/openfema-data-page/nfip-redacted-claims-v3" target="_blank">NFIP Redacted Claims v3</a></td></tr>
+        <tr><td>Well 65-03-204/206 history</td><td>Rebecca Storms, P.G., TWDB Groundwater Monitoring Manager</td><td>Personal correspondence, Sept. 2026 (confirmed USGS site numbers, no record of 1985 discontinuation cause)</td></tr>
+      </table>
+      <div class="note">A caveat worth knowing: the flood-claims data on this site was pulled from an older FEMA API version (<code>FimaNfipClaims</code>) that FEMA has since frozen and is retiring in favor of the v3 dataset linked above. The historical numbers themselves are unchanged, but if you're citing this yourself, reference the v3 dataset going forward. The subsidence trend charts (P018, AULT) are digitized by eye from HGSD's official chart images to show trend shape, accurate in direction but not guaranteed to the exact decimal. Growth/population figures came from secondary sources reporting Census data, not the Census Bureau directly.</div>
+    </div>
+  </div>
+
+  <div id="paper">
+    <h2>Research Paper</h2>
+    <div class="lede">The full write-up: Nathan's own words, built section by section over the course of this project.</div>
+
+    <div class="thesis-box">
+      <span class="label">THESIS</span>
+      Cypress groundwater monitoring has met the continuity benchmark I set for this project since 1985 (at least two wells monitored every year with a record solid enough to show a trend), but the trend data can't say the same. Inside zip codes 77429 and 77433, the boundary that matches my flood data, coverage has fallen a whopping 71%, and today it's holding on by just a couple fingers, with only two wells left that clear the bar. That is a margin of zero against a benchmark of two. Population across the area has climbed past 200,000, which only makes the shrinking coverage harder to justify. But another problem lies beneath the tools: TWDB's own public search fails outright, and not just by limiting results; it returns nothing at all. The only way around it, searching well by well, still turned up just roughly a quarter of the wells that actually exist.
+    </div>
+
+    <div class="paper-section">
+      <h3>1. Introduction</h3>
+      <p>After Hurricane Harvey, I've always been intrigued by how flooding works: how one house can be destroyed while another a couple miles down the road doesn't get a drop near the front door. I watched this play out with my own friends: some had their homes damaged, and a few ended up sheltering with me during the storm. Years later, it made me wonder how much a factor like my neighborhood's retention pond in Coles Crossing actually plays into mitigating flooding, and what other factors might matter too.</p>
+      <p>This thought sent me down a deep rabbit hole of trying to discover what was at the bottom. In my journey down, I found that four agencies (TWDB, USGS, HGSD, and HCFCD) all track parts of the puzzle: groundwater levels, ground sinking, flooding. But the pieces exist scattered across four different systems, and no single source connects them. That gap is what this paper investigates: whether or not the public monitoring network in Cypress is on par with the growth and environmental change it has experienced since the mid-1980s.</p>
+    </div>
+
+    <div class="paper-section">
+      <h3>2. Literature Review</h3>
+      <p>Seven sources shape the background for this project, organized around the two questions it actually asks: one from the paper's original scope, one from where the paper ended up.</p>
+
+      <p class="lit-q">Does subsidence worsen flooding in Cypress? (the paper's original question, now a secondary thread, see Discussion)</p>
+      <p>Kasmarek, Johnson, and Ramage (2010) claim that subsidence directly worsens flooding, because it creates low-lying areas where water collects instead of draining away. This is based on USGS reports from their long-running study of the Chicot, Evangeline, and Jasper aquifers. This is important to my case because it's the earliest, most direct source connecting subsidence to flooding, a position most local agencies still reference today.</p>
+      <p>Talbott (2016), then the Executive Director of the Harris County Flood Control District, argued that uniform subsidence doesn't necessarily worsen flooding; only differential subsidence would, since uniform sinking lowers the whole floodplain together without changing how fast water drains. His claim was based on the district's own internal comparison of subsidence rates along Cypress Creek, not a published study, and it was disputed at the time by University of Houston geologist Shuhab Khan. This matters to my paper because it directly connects to my own subsidence data at P018 and AULT: both stations are sinking at different rates, not the same rate. By Talbott's own logic, that's exactly the condition under which subsidence would worsen flooding, since it's differential, not uniform.</p>
+      <p><i>Source added after an independent review of this project (see Methods):</i> Miller and Shirzaei (2019), published in <i>Remote Sensing of Environment</i>, mapped both pre-Harvey subsidence rates and the actual Harvey-flooded area across the whole Houston-Galveston region using satellite radar (InSAR), then ran a statistical test and found the two were correlated: 85-89% of the flooded area had been subsiding at meaningful rates beforehand. This matters to my paper because it's a real, region-wide, statistically-tested version of the differential-subsidence argument my own P018-vs-AULT comparison could only approach as a thought experiment. It doesn't prove causation in Cypress specifically, but it's the strongest evidence in this literature review for the "differential subsidence matters" side of the Talbott debate.</p>
+
+      <p class="lit-q">How has monitoring here evolved, and how well does it actually work today? (the paper's actual question)</p>
+      <p>Kasmarek, Ramage, and Johnson (2016) documented 13 measuring stations built between 1973 and 1980, and found that one of them, the Addicks station, kept sinking even after regulation began cutting back groundwater pumping elsewhere. This matters to my case because it shows subsidence isn't uniform, hinting at differential subsidence, since each station shows its own rate rather than one shared trend. This connects directly to my own P018 and AULT data, which shows that same differential pattern.</p>
+      <p>Braun, Ramage, and Shah (2019) found parts of the Jasper aquifer dropped 200 feet between 2000 and 2019. They concluded this from USGS's 2019 regional water-level survey across Houston-Galveston. This matters because it shows this kind of decline isn't just limited to aquifers like Chicot and Evangeline (the same aquifers my own wells are drawn from), meaning a third, deeper aquifer is under similar pressure too.</p>
+      <p>Turco et al. (2025) confirms 1985 was a real regulatory turning point (the year HGSD reorganized into 8 zones), based on a century-long historical review of Houston-area groundwater and subsidence research. This matters because it's the exact same year my wells 65-03-204 and 65-03-206 stopped being monitored. Although the review doesn't explain why they were dropped, I later tried to fill that gap through direct outreach to TWDB, which was answered by Rebecca Storms, though even she had no conclusion as to why. The same review also documents just how much worse subsidence used to be before regulation: rates up to a decimeter (about 4 inches) a year in southeast Houston by the 1970s, with 65% of the region's entire century of groundwater-storage loss happening in that pre-regulation stretch. Cypress's own stations today (0.89 to 2.38 cm/yr) are real but modest by comparison, which is itself evidence that regulation worked, at least regionally.</p>
+      <p>Taylor and Alley (2001), in USGS Circular 1217, set out what long-term water-level records are actually for: separating pumping effects from drought, establishing the baseline a later change is measured against, and supporting analyses nobody has thought of yet at the time the well is drilled. That last point is the one that matters most here, because it is the argument against letting a long record lapse even when nothing looks wrong. It also names the failure mode this project ran into, that water-level data is often collected by one agency and published by another, with accessibility suffering at the handoff.</p>
+      <p>The USGS National Ground-Water Monitoring Network's page for TWDB is worth reading against my own rules, because TWDB already publishes operational definitions of its own. There, a "surveillance" well is one measured about once a year and a "trend" well is one measured six times a month or daily, and a well needs at least a five-year record to enter the network at all. TWDB currently serves 1,322 sites to that network. Two things follow. First, my two-well continuity benchmark is mine, not an agency threshold, and the comparison makes that visible rather than hiding it. Second, there is a terminology collision I should name plainly: TWDB's "trend well" means measured often, while my "trend-bearing well" means holding a record a straight line can describe. They are different ideas sharing a word, and this paper uses the second meaning throughout.</p>
+      <p>U.S. Geological Survey (2017) built the first interactive tool to combine groundwater-level data and land-subsidence data for the whole Houston-Galveston region in one place; by USGS's own account, "the first time that groundwater and subsidence data have been put together" for this area. This matters to my case because it's the second source in this review to link two of the four layers this paper tracks: Miller and Shirzaei combined subsidence and flood data, USGS combined groundwater and subsidence. Neither, nor anything else found in this project, puts all four together: wells, subsidence, flood claims, and creek levels. That's the actual gap this paper is pointing at.</p>
+    </div>
+
+    <div class="paper-section">
+      <h3>3. Methods</h3>
+      <p>This project combines data from four main public agencies, collected over two weeks in September 2026. Claude, an AI assistant, was used to query public APIs and navigate agency data tools under my direction: I decided which sources to pursue and evaluated what the data actually showed, while Claude handled the technical retrieval.</p>
+      <p>Before pulling the full well inventory, I fixed the rules for what would count as "monitored" and what would count as a real trend, set in advance, so the analysis couldn't be adjusted after seeing results. Anyone repeating this analysis on TWDB's data should get the same answer using these same rules:</p>
+      <table class="rules-table">
+        <tr><th>Rule</th><th>Setting</th></tr>
+        <tr><td>Study boundary</td><td>TWDB grids 6058/6059/6502/6503, cross-checked against zip codes 77429/77433</td></tr>
+        <tr><td>Analysis window</td><td>1985–2026</td></tr>
+        <tr><td>Trend-bearing in a given year</td><td>A well counts for a year if it has 5+ measurements across a 10+ year span, those measurements are evenly spread (the largest gap between consecutive measurement years is no more than twice the mean gap), and its record span brackets that year. Note what is <i>not</i> in this rule: there is no R&sup2; term, so the coverage figures measure record continuity and sampling regularity, not how well a straight line fits. R&sup2; enters only the separate A/B/C tier ranking below. Note also that it is retrospective: a well counts for 1995 on the strength of its whole record, including measurements taken after 1995, so these figures describe what the record can support today, not what a researcher could have known at the time.</td></tr>
+        <tr><td>"Monitored" in a year</td><td>reported at 1, 2, and 4 measurements/year, side by side</td></tr>
+        <tr><td>Date basis for trends</td><td>Slopes and R&sup2; on the map are computed from the decimal measurement date. The inventory CSV computes them from the integer measurement year, which gives slightly different values for wells measured several times a year: well 6503811 is 9.84 ft/yr by date and 9.35 ft/yr by year. Neither is wrong; the map figure is the higher-resolution one.</td></tr>
+        <tr><td>Trend floor</td><td>5+ measurements over 10+ years</td></tr>
+        <tr><td>Tier A (strong)</td><td>20+ measurements, 20+ year span, R² ≥ 0.7</td></tr>
+        <tr><td>Tier B (moderate)</td><td>10+ measurements, 10+ year span, R² ≥ 0.5</td></tr>
+        <tr><td>Tier C (indicative)</td><td>meets the floor only; direction noted, not weighted heavily</td></tr>
+        <tr><td>Adequacy condition</td><td>2+ wells monitored every year, each showing a trend-floor-qualifying record, within the years monitored</td></tr>
+      </table>
+      <p>We obtained historical well records, including 6503204, 6503206, and 6503104, from TWDB's Groundwater Database. I directed Claude to navigate TWDB's online report tool well by well, and checked its work at each step to make sure no errors occurred. One real setback came up: TWDB's county-wide search tool returned empty results due to what appears to be a bug on their end, so every well had to be looked up individually by its state well number instead.</p>
+      <p>I obtained live well data (6503112, 6503113, 6503313, and 6059706) by directing Claude to query USGS's public API directly using each site's monitoring location number. Claude also researched contact information at TWDB and USGS, surfacing Rebecca Storms, P.G. and Christopher Braun as relevant contacts, which led to the outreach email that got a direct response from Storms, who sent the full 206-point historical record for well 6503204 shortly after. One limitation worth noting: TWDB's hosted version of USGS data lags behind, since TWDB only includes "Approved" readings, not more recent "Provisional" data, so USGS's own site remains the more current source.</p>
+      <p>From HGSD, I obtained data on 12 subsidence stations (including P018, AULT, and P001), covering total displacement, current sinking rate, and for two stations, full trend charts. I had Claude query HGSD's public feature service directly for the summary statistics; for P018 and AULT specifically, since no raw numeric download was available, the data points were estimated by eye from HGSD's official published chart images. There aren't many limitations here, but the digitized P018/AULT numbers aren't guaranteed to the exact decimal due to that limited accuracy.</p>
+      <p>From HCFCD, I obtained current water levels and flood-stage thresholds for 6 gages along Cypress Creek. The key find came from switching the tool to "Channel Status" and checking August 31, 2017, the tail end of Hurricane Harvey. Two gages, 1165 (Eldridge Pkwy N.) and 1170 (Huffmeister Road), both showed "Flooding Likely" at that exact moment, straight from the district's own record. <b>Correction found during a later review of this project:</b> the field-visit route was built around gage 1160 (Grant Road) instead of 1170, meaning the Russ Poppe Family Park visit is site reconnaissance near a gage that wasn't actually one of the two confirmed-flooded ones: useful for context, not verification of a Harvey flood point. Cypress Park (near gage 1165) is reconnaissance at one of the two confirmed-flooded points, but a 2026 site visit shows present-day conditions, not what the site looked like during Harvey itself; the district's own gage record is what actually confirms the 2017 flood. One limitation: I tried pulling exact historical water-level numbers through HCFCD's API and hit a wall (it's blocked), so the Harvey status is solid, but precise peak numbers aren't included.</p>
+      <p>I also obtained flood insurance claims for both Cypress zip codes (77429 and 77433), covering 1978–2024, pulled through FEMA's OpenFEMA public API. One limitation here: the specific API version used has since been frozen by FEMA in favor of a newer version, and the 77429 query hit a 1,000-record cap, so later years for that zip code may be undercounted. For population and housing statistics used in the growth timeline, I relied on secondary sites reporting Census data rather than the Census Bureau directly, since pulling it firsthand was blocked by an API key requirement.</p>
+      <p>AI was used in this project, but not how most people think. Think of it as me as the general and Claude as the troop.</p>
+      <div class="ai-list-label">DELEGATED TO CLAUDE</div>
+      <ul class="ai-list">
+        <li>Querying public APIs and navigating agency websites and report tools (TWDB, USGS, HGSD, FEMA)</li>
+        <li>Pulling and organizing the full well/station/claims datasets once I'd picked the sources</li>
+        <li>Proposing phrasing for sections based on facts and points I gave it, or drafts I'd started myself</li>
+      </ul>
+      <div class="ai-list-label">DECIDED OR CHECKED BY ME</div>
+      <ul class="ai-list">
+        <li>Which agencies, wells, and stations to look into, and when to dig deeper</li>
+        <li>What actually counted as a real finding versus noise</li>
+        <li>Verifying Claude's retrieved numbers were real, not fabricated, before using them</li>
+        <li>The thesis itself, and every claim the paper ultimately makes</li>
+      </ul>
+      <p>Before treating any of this project's claims as final, I ran the whole project through a separate AI (GPT-6 Astra) for an independent adversarial review and a constructive review, then brought both back into this same project to decide what to actually fix. That process caught real errors (see the Corrections Log on the Evidence for Thesis tab for the full list), including a misleading chart, a gage-number mix-up, and an unchecked statistic. It also surfaced a real academic source (Miller and Shirzaei, 2019) that strengthened the literature review. I decided which of its suggestions to act on; not everything it recommended was accepted.</p>
+    </div>
+
+    <div class="paper-section">
+      <h3>4. Findings</h3>
+      <p>Of the wells in this dataset, 19 have a record strong enough (by this project's own floor of 5+ measurements across 10+ years, and an R² bar of at least 0.5) to be ranked by trend strength over their full lifetime, and every single one is declining. None are stable, and none show recovery when you look at their whole record. The fastest is well 6503811, declining at 9.84 ft/yr between 1979 and 1999. A 20th well, 6503104, shows an even more dramatic decline that a straight-line trend can't capture: a steady 0.77 ft/yr from 1938 to 2003, then a roughly sixteenfold acceleration afterward, to 12.07 ft/yr, that this project can't explain. Well 6503204 is worth mentioning specifically: thanks to a complete record obtained directly from Rebecca Storms at TWDB, this well shows depth to water increasing from about 6.5 ft to 59 ft below surface (i.e. the water level fell) between 1931 and 1985, with a sharp, unexplained jump around 1952-53. A separate set of 3 wells (6503907, 6502612, 6503906) has no shortage of data: 67, 60 and 50 readings spanning four decades or more. What they fail over their full lifetime is the trend floor's R² requirement, because their full records are too scattered for a straight line to describe (R² of 0.17, 0.39 and 0.26). Applying that identical floor to just their 2000-2024 stretch, all three clear it, and in that window each of the three is recovering, not declining. Those three are not the whole recovery picture, only the part strong enough to rank. Across the wider study grids, 8 of the 16 wells holding a usable post-2000 record are recovering, 6 are declining and 2 are flat; inside the 77429/77433 boundary this paper reports on, it is 5 recovering against 3 declining. Most of those recovery slopes fit too poorly to rank (6503915 is a steep looking 4.75 ft/yr at an R&sup2; of just 0.16), so the direction is well supported across the area while the rate, for most individual wells, is not. Four more recently drilled wells (6503112, 6503113, 6503313, 6059706) are actively monitored today, but with only 0 to 4 readings apiece on file, none has enough of a record to support a trend of its own; they represent renewed monitoring effort since 2012, not trend evidence.</p>
+      <p>The data shows 12 stations being monitored, with rates ranging between 0.89 to 2.38 cm/yr, not the same everywhere. P018 and AULT are the two sore thumbs of the situation: P018 has been sinking since the 2000s but is slowing down, while AULT has only been tracked since 2015 but is speeding up. Yet at this current day, they're roughly at the same speed (~1.9 cm/yr). These two trend lines were estimated by eye from the official published charts, since exact numbers weren't available.</p>
+      <p>The data pulled tracked the areas of zip codes 77429 and 77433. In 2016 they had 287 claims for water damage, and in 2017 it more than doubled that amount with 735 claims. Almost every other year on record was fewer than 100 claims going back to 1978, and remarkably, the $76 million paid out in 2017 alone was more than every other year combined. The hurdle that comes with this is that it only counts insured losses, so the actual numbers are probably much worse than the ones shown.</p>
+      <p>When looking at all the subgroups on one big timeline, they show almost no overlap. Wells were prominently tracked before 1985, but subsidence and flood data barely existed yet. In 2016-17, when the big flood happened, wells were nowhere to be seen, while subsidence stations had a prominent place by then. Not until 2020 did wells start to reappear, after the worst flood and most of the growth had already happened.</p>
+    </div>
+
+    <div class="paper-section">
+      <h3>5. Discussion</h3>
+      <p><span class="epistemic-tag confirmed">CONFIRMED</span>The lack of overlapping, trend-quality coverage gave researchers very little to compare data against, since one layer was consistently the weakest link. This erosion was especially damaging because it happened during exactly the years Cypress grew the most: trend-bearing well coverage fell 71% inside 77429/77433 while the population climbed past 200,000. This wasn't a gap in measurement itself: wells kept being measured throughout, including during Hurricane Harvey, when 8 wells were tracked in 2016 and 13 in 2017. But by that point in the record, trend-bearing coverage had already thinned to two wells inside the zip boundary (2 in 2015, holding at 2 through 2024; the wider grid boundary gives 3 over the same stretch), so even though data existed, there wasn't the density of high-confidence records a question like this would need. That's not unique to the Harvey years either: across the full dataset, 58 of the 85 wells with a water-level record inside 77429/77433 never had enough readings to support a real trend, and the wider study grids give the same picture at 110 of 157 (6 of those 157 carry rows with no usable depth value, leaving 151 actually workable).</p>
+      <p>There isn't enough evidence in this project to prove Talbott's condition is actually being met in a way that causes flooding; only that it's possible. The P018-vs-AULT data shows real differential subsidence in Cypress, but subsidence could just be one factor among several, not the whole explanation. Consider two areas: one with heavy pavement and high rainfall will likely flood more than another regardless of how much it's sinking. <span class="epistemic-tag interpretation">INTERPRETATION</span>If two areas had the same rainfall and the same amount of pavement, that would rule out those two factors as the reason one floods more than the other, but it wouldn't rule out drainage infrastructure. Pavement itself puts more load on a neighborhood's drainage system in the first place, since water that would normally soak into the ground instead has to be carried away by that system. So even with rainfall and pavement held equal, differential subsidence would still be competing with a difference in how well each area's drainage can handle that same runoff, not standing alone as the explanation. <span class="epistemic-tag hypothesis">HYPOTHESIS (UNTESTED)</span>This is a logical thought experiment, not something this project actually tested: no data here isolates any of these factors to check what's actually driving the difference between two specific areas.</p>
+      <p><span class="epistemic-tag confirmed">CONFIRMED</span>Groundwater in the wells with a long, trustworthy record has been declining for decades; that part isn't in dispute. Where things stand more recently is less settled: those same long-run wells are dominated by pre-2000 data, and a separate set of wells (long-running, but too scattered over their full records to earn a place among the ranked long-run trends) shows a recovering direction when you look at just their 2000–2024 stretch. The subsidence in Cypress is differential, confirmed by the P018-vs-AULT data showing one area accelerating while another decelerates. The three data layers also never had strong, trend-quality coverage at the same time: well monitoring continued throughout, but the two long, complete-record wells this project leans on most for the deep historical trend, 6503204 and 6503206, stopped being measured in 1985, while subsidence and flood-claims data didn't become reliable until well after that point. <span class="epistemic-tag alt-explanation">COMPETING EXPLANATION</span>What isn't proven is that subsidence caused or worsened the 2016-2017 flood spike; Harvey was severe enough on its own to explain catastrophic flooding regardless of ground conditions.</p>
+      <p>Three confounds shape flooding beyond subsidence. Rainfall: more rain simply means greater flood risk. Pavement: since pavement is far less permeable than grass or open ground, water has nowhere to go but up. And drainage infrastructure: the worse a neighborhood's infrastructure, the more water sits stagnant instead of draining away. <span class="epistemic-tag hypothesis">HYPOTHESIS (UNTESTED)</span>The best guess I can make, based on what I've seen growing up, is that drainage infrastructure is an underexplored piece of this, but this project didn't test it. Driving past certain neighborhoods as a kid, my mom would point out how nice the houses were, yet they'd flood every time, even though we lived only a mile away and rarely flooded ourselves. A big reason for that difference was the retention pond next to our own neighborhood, and how well our streets could handle water compared to theirs.</p>
+      <p><span class="epistemic-tag confirmed">CONFIRMED</span>At the end of the day, Cypress's monitoring network held up to the standard it needed to meet, but barely, and largely invisible to anyone outside this project, because TWDB's own public tools don't work. It's not that every agency failed: HGSD's subsidence data is quick and easy to verify. This is a coverage-margin problem and a discoverability problem, and both point specifically at TWDB's own systems.</p>
+    </div>
+
+    <div class="paper-section">
+      <h3>6. Conclusion</h3>
+      <p>The continuity benchmark I set for this project required 2 or more wells with trend-quality data within a year. Meeting it is not the same as the network being in good shape. Inside zip codes 77429 and 77433, trend-bearing coverage fell 71 percent, from 7 wells to 2, which is the benchmark's exact floor and a margin of zero. The wider grid boundary tells the same story more gently, 13 wells down to 3, a 77 percent fall. I report the zip figure as the headline because it is the boundary that shares geography with the flood-claims data this project uses. The reason for that comes down to replacement: of the 27 wells measured since 2013, 18 started in 2003 or later, and 8 as recently as 2020–21. That's consistent with what Rebecca Storms told us: her assumption that the two oldest wells were plugged due to age, though that explains why those specific wells went offline, not a broader replacement policy across the whole network. All this means is that the newer wells simply can't show a strong enough trend yet; that's a data-maturity problem, not a monitoring-stopped problem.</p>
+      <p>The second pillar is discoverability. I had Claude navigate TWDB's own Harris County well-search tool directly, and it failed outright, three times, unfiltered and filtered, reproducing the same failure every time and never returning a result. Separately, my own well-by-well research before running the full inventory only turned up 20 wells. Against the 85 wells holding water-level records inside 77429/77433, the boundary this paper reports on, that is roughly a quarter; against the 157 inside the wider study grids it is closer to an eighth. These are two different failures pointing at the same problem: however you go looking, TWDB's own public tools make this data hard to find. Worth noting, HGSD's subsidence data is quick and easy to check by comparison, so this isn't an every-agency failure; it's specifically TWDB's public tools.</p>
+      <p>The third and final pillar: the wells with the longest, most trustworthy records are all historically declining. But that's not the whole story: a separate set of newer wells, too short and noisy on their own to earn a place among those trusted long-run records, show a promising direction of recovery when you look at just their 2000–2024 stretch.</p>
+      <p>If I'd recommend one thing, it's fixing TWDB's broken tool and continuing to fund newer wells, so the trend data has more years to reference and gets stronger with each one added.</p>
+    </div>
+
+    <div class="paper-section">
+      <h3>7. Works Cited</h3>
+      <p style="font-size:0.85rem; color:var(--ink-soft); margin-bottom:16px;">Citation format may need adjusting to match a specific style guide (APA/MLA) before final submission.</p>
+      <ul class="cite-list">
+        <li>Kasmarek, M.C., Johnson, M.R., and Ramage, J.K., 2010, <i>Water-Level Altitudes 2010 and Water-Level Changes in the Chicot, Evangeline, and Jasper Aquifers, Houston-Galveston Region, Texas</i>: U.S. Geological Survey Scientific Investigations Map 3138.</li>
+        <li>Kasmarek, M.C., Ramage, J.K., and Johnson, M.R., 2016, <i>Water-Level Altitudes 2016 and Water-Level Changes in the Chicot, Evangeline, and Jasper Aquifers and Compaction 1973–2015 in the Chicot and Evangeline Aquifers, Houston-Galveston Region, Texas</i>: U.S. Geological Survey Scientific Investigations Map 3365.</li>
+        <li>Braun, C.L., Ramage, J.K., and Shah, S.D., 2019, <i>Status of Groundwater-Level Altitudes and Long-Term Groundwater-Level Changes in the Chicot, Evangeline, and Jasper Aquifers, Houston-Galveston Region, Texas, 2019</i>: U.S. Geological Survey Scientific Investigations Report 2019-5089.</li>
+        <li>Turco, M.J., et al., 2025, "A Century (1906–2024) of Groundwater and Land Subsidence Studies in Greater Houston Region: A Review," <i>Groundwater</i>, National Ground Water Association.</li>
+        <li>Taylor, C.J., and Alley, W.M., 2001, <i>Ground-Water-Level Monitoring and the Importance of Long-Term Water-Level Data</i>: U.S. Geological Survey Circular 1217, 68 p. DOI: 10.3133/cir1217. <a class="src" href="https://www.usgs.gov/publications/ground-water-level-monitoring-and-importance-long-term-water-level-data" target="_blank">usgs.gov</a></li>
+        <li>U.S. Geological Survey (USGS), <i>National Ground-Water Monitoring Network: Texas Water Development Board data provider page</i> (retrieved Sept. 2026). <a class="src" href="https://www.usgs.gov/apps/ngwmn/provider/TWDB/" target="_blank">usgs.gov/apps/ngwmn</a></li>
+        <li>Fehling, D., "Are Houston's Sinking Suburbs Suffering Worse Flooding?" (Talbott, M., interviewed), <i>Houston Public Media</i>, May 23, 2016.</li>
+        <li>Miller, M.M., and Shirzaei, M., 2019, "Land subsidence in Houston correlated with flooding from Hurricane Harvey," <i>Remote Sensing of Environment</i>, 225, 368-378. DOI: 10.1016/j.rse.2019.03.022.</li>
+        <li>Storms, R., P.G., Manager, Groundwater Monitoring, Texas Water Development Board. Personal correspondence (email), September 2026.</li>
+        <li>U.S. Geological Survey (USGS), 2017, "New App Shows Aquifer Level Change and Subsidence in Relation to Groundwater Withdrawals in Houston-Galveston Area." <a class="src" href="https://txpub.usgs.gov/houston_subsidence/" target="_blank">txpub.usgs.gov/houston_subsidence</a></li>
+        <li>Texas Water Development Board (TWDB), <i>Groundwater Database</i>. <a class="src" href="https://www3.twdb.texas.gov/apps/waterdatainteractive/GroundWaterDataViewer" target="_blank">twdb.texas.gov</a></li>
+        <li>U.S. Geological Survey (USGS), <i>Water Data for the Nation</i>. <a class="src" href="https://waterdata.usgs.gov/nwis" target="_blank">waterdata.usgs.gov</a></li>
+        <li>Harris-Galveston Subsidence District (HGSD). <a class="src" href="https://hgsubsidence.org/" target="_blank">hgsubsidence.org</a></li>
+        <li>Harris County Flood Control District (HCFCD), <i>Flood Warning System</i>. <a class="src" href="https://www.harriscountyfws.org/" target="_blank">harriscountyfws.org</a></li>
+        <li>Federal Emergency Management Agency (FEMA), OpenFEMA, <i>FimaNfipClaims</i> (dataset version retrieved Sept. 2026; FEMA has since retired it in favor of <i>NFIP Redacted Claims v3</i>). <a class="src" href="https://www.fema.gov/openfema-data-page/nfip-redacted-claims-v3" target="_blank">fema.gov</a></li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div id="lightbox" onclick="closeLightbox()">
+  <span class="lb-close">&times;</span>
+  <img id="lightboxImg" src="" alt="">
+  <div class="lb-caption" id="lightboxCaption"></div>
+</div>
+
+<script>
+const wells = [
+  {id:"6503502", lat:29.948611, lon:-95.672222, aquifer:"Chicot and Evangeline Aquifers", depth:1170,
+   status:"1951–1983, 43 readings, Tier A (strong), R²=0.94", live:false, trend:"DECLINING: 1.93 ft/yr average, R²=0.94",
+   note:"Irrigation well. Source: TWDB Groundwater Database bulk download (retrieved Sept 2026). Trend computed directly from the full reading series, not cross-checked against a live single-well report the way 6503204 was.",
+   readings:[[1951.044,38.4],[1951.249,36.34],[1951.868,53],[1952.197,43.93],[1952.934,58.41],[1953.227,48.2],[1953.904,60.38],[1954.203,50.83],[1954.929,66.09],[1955.205,56.23],[1956.199,55.65],[1957.2,60.39],[1958.214,59.77],[1959.192,62.59],[1960.186,63.49],[1961.203,61.36],[1962.216,62.41],[1963.211,67.08],[1964.153,73.77],[1965.189,75.94],[1966.189,78.59],[1967.178,80.57],[1968.183,84.72],[1969.216,86.77],[1970.189,91.57],[1971.205,94.03],[1972.15,97.63],[1973.156,97.74],[1974.178,97.59],[1975.134,96.94],[1976.15,103.14],[1977.151,98.68],[1977.838,98.65],[1978.145,99.55],[1978.847,99.41],[1979.118,98.4],[1979.874,98.27],[1980.025,100.7],[1980.915,99.52],[1981.022,100.57],[1981.877,102.23],[1982.052,102.41],[1982.844,104.36]]},
+  {id:"6503404", lat:29.934722, lon:-95.718611, aquifer:"Chicot and Evangeline Aquifers", depth:1190,
+   status:"1958–1981, 24 readings, Tier A (strong), R²=0.94", live:false, trend:"DECLINING: 3.08 ft/yr average, R²=0.94",
+   note:"Irrigation well. Source: TWDB Groundwater Database bulk download (retrieved Sept 2026). Trend computed directly from the full reading series, not cross-checked against a live single-well report the way 6503204 was.",
+   readings:[[1958.0,85],[1960.913,80.13],[1961.236,70.68],[1962.219,73.12],[1963.214,81.7],[1964.197,83.65],[1965.2,88.18],[1966.197,90.52],[1967.175,94.1],[1968.197,98.99],[1969.195,98.92],[1970.175,105.79],[1971.2,111.74],[1972.15,113.37],[1973.173,115.62],[1974.175,115.43],[1976.153,123.69],[1977.159,125.19],[1978.145,131.93],[1978.847,133.46],[1979.107,147.49],[1979.874,132.9],[1980.025,132.46],[1980.915,133.88]]},
+  {id:"6058901", lat:30.000834, lon:-95.777222, aquifer:"Chicot and Evangeline Aquifers", depth:547,
+   status:"1947–1985, 61 readings, Tier A (strong), R²=0.88", live:false, trend:"DECLINING: 1.24 ft/yr average, R²=0.88",
+   note:"Irrigation well. Source: TWDB Groundwater Database bulk download (retrieved Sept 2026). Trend computed directly from the full reading series, not cross-checked against a live single-well report the way 6503204 was.",
+   readings:[[1947.195,40.1],[1948.208,45.97],[1948.863,66.07],[1949.052,50.56],[1949.186,47.99],[1949.91,58.97],[1950.2,51.31],[1950.89,62.93],[1951.249,54.35],[1951.868,67.47],[1952.199,57.44],[1952.885,72.75],[1953.241,60.69],[1953.896,70.6],[1954.203,63.05],[1955.2,67.56],[1955.877,77.32],[1956.199,68.28],[1956.885,81.09],[1957.2,72.25],[1957.91,76.98],[1958.214,70.63],[1958.918,68.4],[1959.192,71.45],[1959.879,78.84],[1960.183,71.63],[1960.907,76.81],[1961.233,69.21],[1961.907,77.92],[1962.216,70.31],[1962.91,85.91],[1963.211,73.96],[1964.153,81.71],[1965.184,79.37],[1966.186,82.61],[1967.178,80.46],[1968.183,82.82],[1969.208,81.83],[1970.189,85.97],[1971.184,87.63],[1972.164,87.22],[1973.159,87.34],[1974.17,85.58],[1975.137,86.75],[1976.15,87.88],[1977.159,85],[1977.841,94.2],[1978.181,86.2],[1978.855,96.06],[1979.101,90.23],[1979.907,95.5],[1980.025,93.37],[1980.921,99.06],[1981.03,94.54],[1981.847,100.2],[1982.055,99.81],[1982.852,101.47],[1983.03,100.16],[1983.759,103.78],[1984.098,102.95],[1985.022,103.76]]},
+  {id:"6503403", lat:29.931944, lon:-95.726111, aquifer:"Chicot and Evangeline Aquifers", depth:1160,
+   status:"1952–1985, 25 readings, Tier A (strong), R²=0.86", live:false, trend:"DECLINING: 3.22 ft/yr average, R²=0.86",
+   note:"Irrigation well. Source: TWDB Groundwater Database bulk download (retrieved Sept 2026). Trend computed directly from the full reading series, not cross-checked against a live single-well report the way 6503204 was.",
+   readings:[[1952.284,68],[1966.197,86.17],[1969.195,99.56],[1970.175,100.97],[1971.2,108.92],[1972.15,107.57],[1973.173,111.15],[1974.175,112.3],[1975.148,117.26],[1976.153,121.1],[1977.159,117.4],[1978.145,128.89],[1978.852,124.35],[1979.107,152.62],[1979.874,124.21],[1980.025,141.02],[1980.915,124.67],[1981.022,148.6],[1981.877,150.75],[1982.052,149.02],[1982.844,152.73],[1983.03,157.49],[1983.753,159.62],[1984.098,158.84],[1985.019,159.08]]},
+  {id:"6503204", lat:29.970833, lon:-95.698334, aquifer:"Chicot, Lower", depth:72, photoAnchor:"photos-well-site", usgs:"295814095415301",
+   status:"1931–1985, complete official record (206 readings, no gaps), Tier A (strong), R²=0.86", live:false, trend:"DECLINING: 1.14 ft/yr average, R²=0.86",
+   note:"Full record provided directly by USGS via TWDB (R. Storms, P.G., personal correspondence, Sept. 2026), replacing an earlier partial transcription that had a gap from 1938–1980. TWDB has no record of why monitoring stopped in 1985, though it suspects the well was plugged due to age, not necessarily tied to HGSD's 1985 regulatory reorganization as this project originally assumed.",
+   readings:[
+    [1931.25,6.49],[1931.46,9.89],[1931.56,12.25],[1931.61,13.7],[1931.73,15.3],[1931.87,15.76],[1931.94,15.34],[1932.03,13.65],
+    [1932.11,9.85],[1932.2,7.7],[1932.3,8.88],[1932.39,10.4],[1932.48,12.2],[1932.55,13.88],[1932.65,15.17],[1932.74,15.53],
+    [1932.82,15.86],[1932.91,15.93],[1932.99,15.74],[1933.08,15.56],[1933.19,14.57],[1933.35,13.78],[1933.48,15.0],[1933.88,16.76],
+    [1934.31,10.62],[1934.91,15.76],[1935.41,7.72],[1935.63,12.7],[1936.15,6.43],[1936.36,10.88],[1937.85,14.04],[1938.09,13.4],
+    [1938.35,9.3],[1938.89,14.86],[1938.97,15.41],[1939.07,13.56],[1939.18,12.53],[1939.41,15.37],[1939.73,18.56],[1939.95,18.3],
+    [1940.14,17.61],[1940.33,17.08],[1940.49,16.65],[1940.64,16.78],[1940.75,17.09],[1940.91,16.29],[1941.07,15.18],[1941.16,14.51],
+    [1941.25,9.75],[1941.39,8.78],[1941.51,7.8],[1941.62,7.6],[1941.72,7.73],[1941.85,7.4],[1941.96,7.49],[1942.05,7.41],
+    [1942.34,6.91],[1942.57,6.68],[1942.71,6.98],[1943.05,7.98],[1943.32,7.93],[1943.46,7.8],[1943.65,8.17],[1944.08,9.17],
+    [1944.41,7.58],[1944.7,7.58],[1944.95,7.88],[1945.07,7.57],[1945.2,7.19],[1945.48,6.36],[1946.04,7.05],[1946.38,6.09],
+    [1946.52,5.45],[1946.72,6.39],[1946.96,6.26],[1947.08,6.02],[1947.19,6.1],[1947.43,5.77],[1947.71,7.12],[1947.96,8.22],
+    [1948.13,8.87],[1948.44,8.92],[1948.7,10.62],[1948.95,12.0],[1949.11,11.62],[1949.45,11.41],[1949.71,12.78],[1949.96,12.94],
+    [1950.15,13.09],[1950.45,12.8],[1950.74,13.6],[1950.96,14.54],[1951.15,15.09],[1951.45,15.71],[1951.71,17.42],[1951.96,18.66],
+    [1952.1,18.14],[1952.46,19.35],[1952.71,32.61],[1953.0,28.08],[1953.11,27.25],[1953.46,28.99],[1953.96,27.87],[1954.15,28.03],
+    [1954.47,35.52],[1954.74,36.92],[1954.97,33.37],[1955.1,32.79],[1955.95,33.92],[1956.13,32.73],[1956.45,33.27],[1956.72,42.1],
+    [1956.95,38.41],[1957.12,36.53],[1957.44,36.58],[1957.7,42.73],[1957.95,37.59],[1958.14,35.41],[1958.44,37.72],[1958.72,42.93],
+    [1958.94,38.7],[1959.13,37.11],[1959.44,37.73],[1959.7,41.02],[1959.99,37.46],[1960.17,35.71],[1960.46,38.2],[1960.71,39.42],
+    [1961.12,32.47],[1961.45,34.53],[1961.72,36.88],[1961.96,33.43],[1962.12,32.49],[1962.45,36.64],[1962.75,41.51],[1963.16,35.97],
+    [1963.46,41.21],[1963.78,44.99],[1963.96,41.93],[1964.18,39.57],[1964.46,44.32],[1964.72,46.17],[1964.93,44.48],[1965.12,42.65],
+    [1965.45,46.47],[1965.71,49.92],[1965.94,46.91],[1966.13,44.91],[1966.47,46.07],[1966.72,49.25],[1966.96,46.39],[1967.15,45.12],
+    [1967.47,50.66],[1967.75,52.05],[1967.95,49.46],[1968.1,48.39],[1968.46,50.75],[1968.96,50.32],[1969.15,49.89],[1969.75,52.98],
+    [1969.95,51.72],[1970.14,49.78],[1970.93,52.26],[1971.12,51.02],[1971.47,54.93],[1971.71,56.48],[1972.09,53.4],[1972.42,54.87],
+    [1972.74,57.43],[1972.92,55.83],[1973.12,54.26],[1973.43,53.74],[1973.7,56.01],[1973.92,54.14],[1974.1,52.62],[1974.47,53.74],
+    [1974.69,56.14],[1974.94,54.03],[1975.12,52.29],[1975.44,51.57],[1975.73,53.78],[1975.95,51.91],[1976.17,51.82],[1976.43,50.64],
+    [1976.7,55.72],[1976.92,55.02],[1977.11,53.24],[1977.41,53.0],[1977.7,56.08],[1978.12,54.58],[1978.41,56.13],[1978.72,58.99],
+    [1979.04,57.71],[1979.41,55.96],[1979.68,58.1],[1980.06,56.48],[1980.5,57.2],[1980.72,62.15],[1981.04,58.45],[1981.44,58.6],
+    [1981.67,62.14],[1982.05,59.06],[1982.71,62.77],[1983.03,58.79],[1984.04,59.05],[1985.02,59.14]
+   ]},
+  {id:"6503810", lat:29.876389, lon:-95.691667, aquifer:"Evangeline Aquifer", depth:967,
+   status:"1978–2024, 47 readings, Tier A (strong), R²=0.86", live:false, trend:"DECLINING: 4.22 ft/yr average, R²=0.86", usgs:"295235095414301",
+   note:"Public Supply well. Source: TWDB Groundwater Database bulk download (retrieved Sept 2026). Trend computed directly from the full reading series, not cross-checked against a live single-well report the way 6503204 was.",
+   readings:[[1977.564,210],[1980.219,184.22],[1980.516,233.95],[1980.724,247.27],[1981.11,203],[1981.463,260.91],[1982.049,212.22],[1982.071,204.95],[1982.668,258.2],[1983.025,210.84],[1984.082,207.75],[1985.016,208.41],[1986.019,212.73],[1987.033,209.4],[1988.014,214.36],[1989.104,215.17],[1990.058,251.27],[1992.063,246.32],[1993.068,258.29],[1994.036,265.67],[1995.022,267.5],[1996.011,269.98],[1997.019,276.37],[1998.036,274.25],[1999.019,284.64],[2000.033,301.95],[2001.044,299.66],[2002.038,336.89],[2003.011,344.97],[2004.107,360.08],[2005.107,350.27],[2006.044,363.91],[2006.992,357.52],[2008.019,383.71],[2009.074,344.1],[2010.047,334.89],[2011.016,322],[2012.046,340.5],[2013.041,324.18],[2014.041,335.52],[2014.953,320.57],[2019.115,369.5],[2020.055,372.4],[2021.074,371.85],[2022.123,374.16],[2023.044,377.2],[2024.027,397.81]]},
+  {id:"6503405", lat:29.933055, lon:-95.740000, aquifer:"Evangeline Aquifer", depth:1160,
+   status:"1968–2008, 45 readings, Tier A (strong), R²=0.85", live:false, trend:"DECLINING: 3.73 ft/yr average, R²=0.85",
+   note:"Irrigation well. Source: TWDB Groundwater Database bulk download (retrieved Sept 2026). Trend computed directly from the full reading series, not cross-checked against a live single-well report the way 6503204 was.",
+   readings:[[1968.142,106],[1969.195,99.1],[1970.175,104.87],[1971.2,110.18],[1972.15,112.39],[1973.173,116.38],[1974.175,117.17],[1975.148,124.05],[1976.153,126.27],[1977.159,128.8],[1977.841,159.77],[1978.145,134.21],[1978.852,142.89],[1979.118,144.86],[1979.874,140.35],[1980.025,150.33],[1980.915,142.14],[1981.022,170.36],[1981.877,171.88],[1982.052,171.61],[1982.844,173.01],[1985.019,174.8],[1986.014,174.18],[1987.011,178.44],[1988.011,180.97],[1989.107,193.63],[1990.047,197.79],[1991.038,199.1],[1992.06,204.25],[1993.071,197.41],[1994.033,201.87],[1995.022,199.97],[1996.011,205.12],[1997.022,210.56],[1998.033,191.23],[1999.016,196.04],[2000.027,213.46],[2001.022,212.06],[2002.025,186.33],[2003.112,164.67],[2004.041,235.86],[2005.063,251.12],[2006.03,277.43],[2006.962,284.82],[2008.005,279.63]]},
+  {id:"6502916", lat:29.896945, lon:-95.786111, aquifer:"Chicot and Evangeline Aquifers", depth:660,
+   status:"1967–1991, 31 readings, Tier A (strong), R²=0.85", live:false, trend:"DECLINING: 2.64 ft/yr average, R²=0.85",
+   note:"Irrigation well. Source: TWDB Groundwater Database bulk download (retrieved Sept 2026). Trend computed directly from the full reading series, not cross-checked against a live single-well report the way 6503204 was.",
+   readings:[[1967.167,95.03],[1967.91,112.67],[1968.197,98.35],[1969.197,100.39],[1970.175,104.8],[1971.203,108.36],[1972.161,108.96],[1973.156,112.4],[1974.175,112.73],[1975.137,116.6],[1976.164,116.87],[1977.151,119.62],[1978.184,123.68],[1978.866,129.32],[1979.118,131.88],[1979.912,142.25],[1980.027,134.91],[1980.94,143.05],[1981.03,135.65],[1981.847,145.36],[1982.09,143.92],[1982.819,158],[1983.033,146.5],[1983.742,157.41],[1984.085,149.06],[1985.025,149.63],[1986.014,149.31],[1987.011,148.65],[1988.011,150.16],[1990.025,145.52],[1991.038,146.36]]},
+  {id:"6503104", lat:29.986389, lon:-95.743334, aquifer:"Chicot &amp; Evangeline", depth:499,
+   status:"1938–2008, complete series (70 years, 115 readings). Full-series R²=0.85, which clears Tier A on the numbers; held out of the ranking because a single straight line misdescribes its shape, not because the record is weak", live:false, trend:"DECLINING: sharply accelerating after 2003",
+   readings:[
+    [1938.35,8],[1938.84,14.6],[1938.97,13.78],[1939.07,12.43],[1939.22,11.16],[1939.74,18.91],[1939.96,16.02],
+    [1940.14,14.71],[1940.77,21.49],[1940.92,16.8],[1941.16,12.39],[1941.26,11.5],[1941.39,10.8],[1941.52,10.44],
+    [1941.68,19.14],[1941.85,12.06],[1941.96,10.79],[1942.06,10],[1942.21,9.3],[1942.81,14.28],[1943.28,9.41],
+    [1943.86,16.68],[1944.23,8.2],[1944.78,17.67],[1945.21,8.15],[1945.82,17.93],[1946.24,9.73],[1947.23,10.41],
+    [1948.21,14.22],[1948.87,30.38],[1949.05,23.37],[1949.19,20.17],[1949.91,18.93],
+    [1950.20,13.91],[1950.90,20.32],[1951.25,17.07],[1951.87,23.6],[1952.20,18.75],[1952.89,27.47],[1953.25,21.97],
+    [1953.90,26.82],[1954.20,23.35],[1954.93,29.51],[1955.20,24.98],[1955.88,29.06],[1956.20,25.05],[1956.89,35.26],
+    [1957.20,31.13],[1957.91,30.82],[1958.21,26.62],[1958.92,32.96],[1959.19,29.47],[1959.88,33.54],[1960.18,28.5],
+    [1960.91,30.27],[1961.24,26.69],[1961.91,31.9],[1962.22,29.12],[1962.91,32.07],[1963.21,31.05],[1964.15,33.66],
+    [1964.88,39.83],[1965.19,35.33],[1965.86,41.48],[1966.18,35.76],[1966.90,38.99],[1967.18,37.98],[1967.91,42.55],
+    [1968.19,40.91],[1968.88,43.16],[1969.21,37.85],[1970.19,40.72],[1971.18,43.88],[1972.14,43.56],[1973.18,42.54],
+    [1974.17,42.5],[1975.14,42.66],[1976.15,44.62],[1977.15,41.42],[1977.84,47.72],[1978.14,43.69],[1978.85,48.11],
+    [1979.20,46.51],[1979.91,47.94],[1980.03,46.14],[1980.92,48.05],[1981.02,50.17],
+    [1981.88,49.96],[1982.06,48.87],[1982.85,51.53],[1983.03,50.97],[1983.76,52.85],[1984.10,52.02],[1986.12,43.3],
+    [1987.01,46.85],[1988.01,48.16],[1989.07,53.1],[1990.05,53.66],[1991.04,54.02],[1992.06,57.26],[1993.07,48.95],
+    [1995.09,47.98],[1996.01,52.31],[1997.02,52.59],[1998.03,49.54],[1999.02,53.1],[2000.03,52.85],[2001.02,52.05],
+    [2002.03,48.36],[2003.08,41.19],[2004.07,64.19],[2005.07,90.86],[2006.03,95.18],[2006.96,98.31],[2008.01,102.51]
+   ],
+   note:"Drilled 1938. Steady decline 1938–2003 (~0.6 ft/yr avg), then a sharp jump: 41 ft (2003) to 102.5 ft (2008), roughly 12 ft/yr, more than 10x the earlier rate."},
+  {id:"6503101", lat:29.978611, lon:-95.717500, aquifer:"Chicot Aquifer, Lower", depth:120,
+   status:"1956–2012, 350 readings, Tier A (strong), R²=0.84", live:false, trend:"DECLINING: 0.85 ft/yr average, R²=0.84", usgs:"295842095430201",
+   note:"Unused well. Source: TWDB Groundwater Database bulk download (retrieved Sept 2026). Trend computed directly from the full reading series, not cross-checked against a live single-well report the way 6503204 was.",
+   readings:[[1955.723,42.8],[1955.953,37.89],[1956.128,36.03],[1956.451,45.51],[1956.948,43.15],[1957.123,40.17],[1957.444,42.84],[1957.696,52.49],[1957.948,40.98],[1958.14,38.4],[1958.441,46.24],[1958.715,50],[1958.942,42.59],[1959.129,40.33],[1959.444,44.75],[1959.723,46.46],[1959.992,40.69],[1960.172,38.61],[1960.456,46.25],[1960.708,46.75],[1961.118,36.71],[1961.449,44.18],[1961.496,43.1],[1961.581,48],[1961.666,48.8],[1961.748,45.2],[1961.833,43],[1961.915,39.9],[1962.038,38.1],[1962.085,37.6],[1962.162,37],[1962.247,36.7],[1962.329,37],[1962.414,46.6],[1962.496,50.3],[1962.581,53.6],[1962.666,55.1],[1962.748,50],[1962.888,44.8],[1962.915,44],[1963.0,42.2],[1963.085,40.9],[1963.162,40.1],[1963.247,39.8],[1963.329,43.2],[1963.414,49.1],[1963.496,52.2],[1963.581,53.4],[1963.666,54.9],[1963.748,53.6],[1963.833,51.3],[1963.915,48],[1964.0,46.2],[1964.085,44.2],[1964.164,43.7],[1964.249,43.2],[1964.331,43.6],[1964.415,49.9],[1964.497,55],[1964.582,57.4],[1964.724,56.1],[1964.749,54.7],[1964.833,51],[1964.915,48.9],[1965.0,47.7],[1965.085,46.6],[1965.162,45.9],[1965.247,45.5],[1965.329,46.5],[1965.414,52.7],[1965.564,58.8],[1965.605,59],[1965.666,58.7],[1965.748,57.8],[1965.833,54.3],[1965.915,51.3],[1966.0,49.6],[1966.085,48.4],[1966.162,47.5],[1966.315,47.2],[1966.329,47],[1966.414,48.5],[1966.496,55.7],[1966.581,58.7],[1966.666,57.7],[1966.748,54.9],[1966.833,52.6],[1966.915,51],[1967.0,49.55],[1967.085,48.6],[1967.162,48.35],[1967.247,48.15],[1967.329,54],[1967.414,58.65],[1967.496,61.6],[1967.581,62.65],[1967.666,62.1],[1967.748,59.75],[1967.833,55.95],[1967.915,54.25],[1968.0,52.9],[1968.085,51.6],[1968.164,50.9],[1968.249,50.45],[1968.331,53.55],[1968.415,57.05],[1968.497,58.65],[1968.582,59.4],[1968.667,62.05],[1968.749,60.2],[1968.833,57.35],[1968.915,54.65],[1969.0,53.25],[1969.085,51.85],[1969.162,51.1],[1969.247,50.35],[1969.329,50.4],[1969.414,54.6],[1969.496,61.3],[1969.581,63.35],[1969.666,62.9],[1969.751,61.25],[1969.833,59.8],[1969.915,57.35],[1970.0,55.05],[1970.085,53.85],[1970.162,53.15],[1970.247,52.35],[1970.329,53.65],[1970.414,56.9],[1970.496,62.5],[1970.581,62.8],[1970.666,65.1],[1970.748,62.3],[1970.833,59.55],[1970.915,57.2],[1971.0,56.05],[1971.085,55.45],[1971.159,55.2],[1971.162,55.1],[1971.247,56.05],[1971.329,58.75],[1971.414,61.4],[1971.496,65.9],[1971.581,67.1],[1971.666,65.15],[1971.748,64.1],[1971.833,61.2],[1971.915,59.35],[1972.0,57.95],[1972.09,57],[1972.164,56.2],[1972.249,56.1],[1972.331,58.9],[1972.418,62.05],[1972.497,64.9],[1972.582,64.1],[1972.667,65.6],[1972.749,66.15],[1972.833,63.2],[1972.943,60.35],[1973.0,59.35],[1973.085,58.05],[1973.162,57.3],[1973.247,56.5],[1973.329,56],[1973.414,58.8],[1973.496,61.5],[1973.581,65.15],[1973.666,64.4],[1973.748,62.45],[1973.833,60.95],[1973.915,59.55],[1974.0,58.1],[1974.085,56.9],[1974.162,56.25],[1974.247,55.4],[1974.329,57.65],[1974.414,60.35],[1974.496,65.5],[1974.581,65.65],[1974.666,66.2],[1974.748,64.25],[1974.833,61.95],[1974.915,60.4],[1975.0,58.85],[1975.085,57.6],[1975.162,56.75],[1975.247,56.35],[1975.329,55.85],[1975.414,58.85],[1975.496,60.95],[1975.581,61.7],[1975.666,63.1],[1975.748,63.65],[1975.833,61.85],[1975.915,60.25],[1976.0,58.7],[1976.085,57.8],[1976.164,57.2],[1976.249,57],[1976.331,58],[1976.415,62.4],[1976.497,64.8],[1976.582,63.9],[1976.667,64.95],[1976.749,64.05],[1976.833,62.45],[1976.915,61.1],[1977.0,59.74],[1977.085,58.85],[1977.162,58.09],[1977.247,57.4],[1977.329,57.21],[1977.414,61.35],[1977.496,64.75],[1977.581,64.25],[1977.597,64.25],[1977.666,65.81],[1977.748,64.84],[1977.915,62.25],[1978.0,61.4],[1978.085,60.49],[1978.162,59.65],[1978.247,59.32],[1978.332,59.84],[1978.414,65.4],[1978.666,68.93],[1978.748,67.96],[1978.833,66.68],[1979.0,63.52],[1979.085,62.67],[1979.162,61.7],[1979.247,60.91],[1979.329,60.47],[1979.414,62.16],[1979.496,65.52],[1979.581,66.4],[1979.666,66.14],[1979.748,66.64],[1979.948,66.35],[1980.0,62.85],[1980.087,62.15],[1980.164,61.18],[1980.249,60.63],[1980.331,60.6],[1980.415,63.29],[1980.497,66.17],[1980.582,67.34],[1980.667,69],[1980.749,68.83],[1980.833,67.19],[1980.915,65.6],[1981.0,65.27],[1981.085,63.78],[1981.175,63.21],[1981.247,62.99],[1981.496,67.15],[1981.581,66.47],[1981.666,67.97],[1981.748,68.45],[1981.833,67.19],[1982.014,65.08],[1982.085,64.57],[1982.162,64.37],[1982.247,63.79],[1982.329,63.67],[1982.414,64.74],[1982.496,67.26],[1982.581,68.37],[1982.707,69.69],[1982.901,68.34],[1982.915,67.84],[1983.063,66.73],[1983.142,66.13],[1983.285,65.49],[1983.452,66.6],[1983.6,67.34],[1983.784,67.05],[1983.948,66.01],[1984.123,65.42],[1984.347,65.32],[1984.549,68.57],[1984.675,68.95],[1984.85,68.52],[1985.063,67.42],[1985.208,66.94],[1985.345,66.59],[1985.592,68.41],[1985.718,68.95],[1985.956,68.51],[1986.079,67.8],[1986.263,67.4],[1986.422,68.03],[1986.556,68.97],[1986.636,69.25],[1986.762,69.1],[1986.879,68.53],[1987.033,68.25],[1987.164,67.75],[1987.364,67.85],[1987.51,68.55],[1987.614,68.6],[1987.748,69.6],[1988.011,69.27],[1988.219,68.51],[1988.473,69.8],[1988.667,70.64],[1988.874,71.13],[1989.11,70.87],[1989.274,70.24],[1989.455,71.09],[1989.636,70.89],[1989.655,71.09],[1989.712,71.66],[1989.877,71.64],[1990.044,70.93],[1990.23,70.96],[1990.411,70.97],[1991.104,72.18],[1991.362,71.7],[1991.518,72.16],[1991.671,72.85],[1991.868,72.79],[1992.167,72.28],[1992.317,72.54],[1992.363,71.91],[1992.549,72.82],[1992.727,73.08],[1992.896,73.99],[1993.151,72.52],[1993.315,72.54],[1993.474,72.68],[1993.649,73.9],[1993.989,73.76],[1994.293,73.44],[1994.564,74.5],[1995.014,74.22],[1996.011,75.27],[1997.082,76.43],[1998.06,76.77],[1998.789,78.53],[1999.038,78.9],[2000.093,79.83],[2001.14,93.1],[2007.041,78.77],[2009.071,85.62],[2009.975,85.99],[2011.005,86.75],[2012.044,88.65]]},
+  {id:"6503206", lat:29.970833, lon:-95.698611, aquifer:"Chicot, Lower", depth:160, photoAnchor:"photos-well-site", usgs:"295814095415302",
+   status:"1957–1985, complete series (75 readings), Tier A (strong), R²=0.81", live:false, trend:"DECLINING: 0.96 ft/yr average, R²=0.81",
+   note:"Corrected from an earlier draft that undercounted this well's readings as \"~40\"; the full series has 75. TWDB confirmed (personal correspondence, R. Storms, P.G., Sept. 2026) this was a USGS-operated site. TWDB has no record of why monitoring stopped in 1985, though it suspects the well was plugged due to age, not necessarily tied to HGSD's 1985 regulatory reorganization as this project originally assumed.",
+   readings:[
+    [1957.45,36.6],[1957.70,42.73],[1958.72,43.02],[1959.13,37.11],[1959.45,37.76],[1959.73,41.05],[1959.99,37.49],
+    [1960.46,38.27],[1960.71,39.47],[1961.12,32.58],[1961.45,34.59],[1961.72,36.99],[1962.12,32.56],[1962.46,36.72],
+    [1962.75,41.5],[1963.16,36.09],[1963.76,46.89],[1963.97,41.84],[1964.18,39.59],[1964.46,44.44],[1964.73,46.07],
+    [1964.93,44.51],[1965.13,42.54],[1965.72,49.49],[1965.94,46.75],[1966.13,44.77],[1966.97,46.34],[1967.15,45.08],
+    [1967.47,49.58],[1967.95,48.77],[1968.11,48.31],[1968.46,50.75],[1968.96,50.19],[1969.16,49.57],[1969.75,52.76],
+    [1969.95,53.57],[1970.14,49.6],[1971.12,49.86],[1971.41,56.3],[1972.09,53.38],[1972.74,67.3],[1972.93,55.61],
+    [1973.12,54.07],[1973.44,53.81],[1973.70,56.02],[1973.93,54],[1974.11,52.64],[1974.47,54.06],[1974.70,56.22],
+    [1974.94,54],[1975.12,52.24],[1975.44,51.92],[1975.96,52.84],[1976.17,51.63],[1976.44,53.85],[1976.71,55.71],
+    [1976.92,55],[1977.12,52.99],[1977.41,53.25],[1977.70,56.16],[1978.15,54.64],[1978.41,56.3],[1979.04,57.75],
+    [1979.41,55.85],[1979.68,58.09],[1980.06,56.72],[1980.73,61.98],[1981.04,58.85],[1981.44,58.8],[1981.67,59.9],
+    [1982.05,59.07],[1982.71,61.52],[1983.03,58.91],[1984.05,59.38],[1985.02,59.23]
+   ]},
+  {id:"6502308", lat:29.990278, lon:-95.751944, aquifer:"Chicot Aquifer, Lower", depth:885,
+   status:"1963–2012, 75 readings, Tier A (strong), R²=0.78", live:false, trend:"DECLINING: 2.47 ft/yr average, R²=0.78", usgs:"295924095450601",
+   note:"Irrigation well. Source: TWDB Groundwater Database bulk download (retrieved Sept 2026). Trend computed directly from the full reading series, not cross-checked against a live single-well report the way 6503204 was.",
+   readings:[[1963.444,110],[1967.178,58.65],[1968.883,78.58],[1969.214,61],[1970.186,64.7],[1971.184,67.94],[1972.142,70.77],[1973.181,71.62],[1974.17,70.68],[1975.134,74.14],[1976.15,75.36],[1977.151,76.35],[1977.841,95.29],[1978.145,84.94],[1978.855,99.01],[1979.107,75.14],[1980.025,87.84],[1980.915,96.4],[1981.03,89.13],[1981.847,93.17],[1982.047,92.82],[1982.126,93.23],[1982.296,92.42],[1982.373,99.67],[1982.449,96.38],[1982.721,97.86],[1982.797,126.67],[1982.932,106.24],[1983.03,101.96],[1983.142,100.23],[1983.2,96.31],[1983.293,95.1],[1983.353,98.29],[1983.471,100.45],[1983.548,102.52],[1983.649,108.38],[1983.756,105.66],[1983.836,105.23],[1983.907,103.51],[1984.06,94.87],[1984.145,93.24],[1984.317,96.02],[1984.658,101.36],[1984.855,96.3],[1984.904,90.79],[1984.91,93.38],[1984.992,93.38],[1985.022,96.71],[1986.016,97.8],[1987.011,99.15],[1988.011,99.73],[1989.066,126],[1990.022,108.7],[1991.038,110.15],[1992.06,115.47],[1993.071,103.92],[1994.033,112.51],[1995.063,120.11],[1996.022,144.04],[1997.022,147.52],[1998.058,141.87],[1999.011,146.22],[2000.027,131.28],[2001.022,131.66],[2002.022,143.41],[2003.112,130.95],[2004.033,205.01],[2005.068,179.03],[2006.03,185.44],[2006.964,188.04],[2008.005,176.61],[2009.107,179.4],[2010.008,147],[2011.052,148.74],[2012.044,142]]},
+  {id:"6058802", lat:30.017500, lon:-95.814723, aquifer:"Chicot and Evangeline Aquifers", depth:550,
+   status:"1945–1985, 71 readings, Tier A (strong), R²=0.72", live:false, trend:"DECLINING: 1.08 ft/yr average, R²=0.72",
+   note:"Unused well. Source: TWDB Groundwater Database bulk download (retrieved Sept 2026). Trend computed directly from the full reading series, not cross-checked against a live single-well report the way 6503204 was.",
+   readings:[[1944.79,55.9],[1945.203,41.03],[1946.236,39.32],[1947.23,41.4],[1948.208,45.28],[1948.863,68.34],[1949.052,54.58],[1949.186,50.7],[1949.91,61.28],[1950.2,51],[1950.89,64.37],[1951.23,53.5],[1951.868,67.7],[1952.199,55.7],[1952.571,102.62],[1952.885,75.08],[1953.241,58.41],[1953.896,69.98],[1954.203,59.96],[1954.929,75.09],[1955.2,63.23],[1955.877,73.55],[1956.199,60.43],[1956.885,85.3],[1957.2,63.99],[1957.91,73.3],[1958.214,65.75],[1958.918,73.95],[1959.192,67.3],[1959.879,72.75],[1960.183,65.46],[1960.907,69.71],[1961.236,62.17],[1961.907,70.33],[1962.216,62.69],[1962.91,74.94],[1963.211,66.49],[1964.153,71.11],[1964.88,81.4],[1965.184,70.84],[1965.86,84.1],[1966.184,72.69],[1966.89,79.32],[1967.178,72.73],[1967.907,84.57],[1968.183,75.6],[1968.883,83.27],[1969.208,74.78],[1970.17,78.14],[1971.184,79.73],[1972.142,80.66],[1973.156,81.46],[1974.17,80.87],[1975.137,82.5],[1976.172,84.76],[1977.145,81.76],[1977.841,90.36],[1978.181,79.96],[1978.855,91.94],[1979.101,85.24],[1979.907,90.75],[1980.025,87.86],[1980.921,93.91],[1981.03,88.81],[1981.847,95.14],[1982.055,92.89],[1982.852,99.49],[1983.03,95.36],[1983.759,101.64],[1984.098,99.83],[1985.022,100.46]]},
+  {id:"6502202", lat:29.994722, lon:-95.810834, aquifer:"Chicot and Evangeline Aquifers", depth:550,
+   status:"1945–1985, 47 readings, Tier A (strong), R²=0.71", live:false, trend:"DECLINING: 1.52 ft/yr average, R²=0.71",
+   note:"Irrigation well. Source: TWDB Groundwater Database bulk download (retrieved Sept 2026). Trend computed directly from the full reading series, not cross-checked against a live single-well report the way 6503204 was.",
+   readings:[[1944.79,49.2],[1966.89,85.32],[1967.178,75.65],[1967.907,91.89],[1968.183,79.29],[1968.883,90.2],[1969.208,77.2],[1970.17,81.74],[1971.2,83.55],[1972.15,85.82],[1973.156,87.06],[1974.17,86.03],[1975.134,83.99],[1976.148,91.31],[1978.184,86.78],[1980.246,89.16],[1981.03,90.25],[1981.244,89.16],[1981.847,95.16],[1982.047,92.52],[1982.126,95.21],[1982.2,95.02],[1982.296,94.77],[1982.373,103.55],[1982.449,98.98],[1982.797,116.65],[1982.932,107.36],[1983.03,102.65],[1983.142,98.81],[1983.2,96.4],[1983.293,96.05],[1983.353,97.91],[1983.471,110.19],[1983.548,115.51],[1983.649,115.9],[1983.721,113.76],[1983.836,111.62],[1983.907,107.95],[1984.06,98.41],[1984.317,107.14],[1984.568,119.3],[1984.658,117.03],[1984.735,119.59],[1984.855,114.88],[1984.91,110.54],[1984.986,102.22],[1985.022,98.63]]},
+  {id:"6502811", lat:29.880833, lon:-95.806389, aquifer:"Chicot Aquifer, Lower", depth:284,
+   status:"1931–1977, 12 readings, Tier B (moderate), R²=0.97", live:false, trend:"DECLINING: 2.09 ft/yr average, R²=0.97",
+   note:"Stock well. Source: TWDB Groundwater Database bulk download (retrieved Sept 2026). Trend computed directly from the full reading series, not cross-checked against a live single-well report the way 6503204 was.",
+   readings:[[1931.225,35.8],[1967.167,99.49],[1968.18,104.82],[1969.195,107.51],[1970.173,114.03],[1971.203,113.39],[1972.15,115.35],[1973.156,122.5],[1974.173,127.79],[1975.134,125.04],[1976.164,128.16],[1977.151,135.72]]},
+  {id:"6503703", lat:29.892778, lon:-95.728056, aquifer:"Chicot Aquifer", depth:695,
+   status:"1967–1985, 47 readings, Tier B (moderate), R²=0.75", live:false, trend:"DECLINING: 4.48 ft/yr average, R²=0.75", usgs:"295333095433801",
+   note:"Irrigation well. Source: TWDB Groundwater Database bulk download (retrieved Sept 2026). Trend computed directly from the full reading series, not cross-checked against a live single-well report the way 6503204 was.",
+   readings:[[1966.964,125],[1968.183,98.59],[1969.197,101.42],[1970.186,107.08],[1971.203,136.07],[1972.161,120.36],[1974.173,119.61],[1975.148,111.71],[1976.164,114.92],[1977.151,130.74],[1977.178,130.11],[1977.858,132.88],[1978.184,136.26],[1978.866,138.07],[1979.118,146.03],[1979.912,158.84],[1980.025,148.01],[1980.027,148.01],[1980.94,151.72],[1981.03,149.88],[1981.847,152.15],[1982.09,151.32],[1982.803,198.17],[1982.973,184.55],[1983.047,168.07],[1983.151,160.62],[1983.167,155.13],[1983.203,153.4],[1983.296,152.17],[1983.362,158.1],[1983.466,162.19],[1983.551,164.74],[1983.649,173.31],[1983.721,174.4],[1983.816,174.04],[1983.907,169.46],[1983.964,162.66],[1984.06,159.13],[1984.145,157.86],[1984.317,161.35],[1984.53,183.16],[1984.568,187.01],[1984.658,184.79],[1984.735,204.85],[1984.855,189.44],[1984.91,180.25],[1985.022,191.5]]},
+  {id:"6503811", lat:29.883611, lon:-95.687222, aquifer:"Evangeline Aquifer", depth:1060,
+   status:"1979–1999, 50 readings, Tier B (moderate), R²=0.74", live:false, trend:"DECLINING: 9.84 ft/yr average, R²=0.74",
+   note:"Public Supply well. Source: TWDB Groundwater Database bulk download (retrieved Sept 2026). Trend computed directly from the full reading series, not cross-checked against a live single-well report the way 6503204 was.",
+   readings:[[1979.386,141],[1982.071,196.46],[1982.132,195.59],[1982.205,194.77],[1982.304,194.57],[1982.375,199.74],[1982.551,246.53],[1982.671,251.7],[1982.726,256.3],[1982.816,269.37],[1982.918,273.81],[1983.047,258.31],[1983.167,237.65],[1983.208,222.41],[1983.301,214.36],[1983.359,219.56],[1983.466,222.01],[1983.542,225.76],[1983.658,221.45],[1983.718,222.57],[1983.803,219.91],[1983.849,217.62],[1983.912,215.05],[1983.97,214.98],[1984.066,217.02],[1984.161,213.87],[1984.232,205.63],[1984.295,206.93],[1984.434,234.84],[1984.489,243.76],[1984.577,248.1],[1984.661,246.03],[1984.738,253.9],[1984.866,251.51],[1984.907,244.79],[1985.022,222.57],[1986.019,229.2],[1987.033,221.39],[1988.014,229.96],[1989.107,241.4],[1990.049,240.47],[1991.044,237.01],[1992.063,236.48],[1993.066,348.83],[1994.036,338.29],[1995.03,368.15],[1996.019,372.72],[1997.019,380.05],[1998.038,374.87],[1999.027,383.42]]},
+  {id:"6503401", lat:29.948889, lon:-95.747500, aquifer:"Evangeline Aquifer", depth:1148,
+   status:"1947–1975, 10 readings, Tier B (moderate), R²=0.72", live:false, trend:"DECLINING: 1.84 ft/yr average, R²=0.72",
+   note:"Irrigation well. Source: TWDB Groundwater Database bulk download (retrieved Sept 2026). Trend computed directly from the full reading series, not cross-checked against a live single-well report the way 6503204 was.",
+   readings:[[1947.23,17.4],[1967.175,70.94],[1968.197,73.04],[1969.195,72.04],[1970.175,75.64],[1971.2,76.3],[1972.15,64.17],[1973.162,62.55],[1974.175,61.53],[1975.148,70.25]]},
+  {id:"6058704", lat:30.029722, lon:-95.851389, aquifer:"Chicot Aquifer", depth:297,
+   status:"1928–1991, 209 readings, Tier B (moderate), R²=0.65", live:false, trend:"DECLINING: 1.23 ft/yr average, R²=0.65", usgs:"300146095510401",
+   note:"Stock well. Source: TWDB Groundwater Database bulk download (retrieved Sept 2026). Trend computed directly from the full reading series, not cross-checked against a live single-well report the way 6503204 was.",
+   readings:[[1928.497,42.8],[1931.279,43.25],[1931.403,43.45],[1931.463,43.68],[1931.556,43.95],[1931.729,44.47],[1931.942,44.28],[1932.033,43.8],[1932.109,44.04],[1932.298,44.1],[1932.393,44.18],[1932.473,44.48],[1932.555,44.78],[1932.648,45.15],[1932.743,45.32],[1932.822,45.45],[1932.989,45.16],[1933.082,44.84],[1933.195,44.92],[1933.353,45.37],[1933.482,45.58],[1933.885,46.35],[1935.408,44.65],[1935.63,45.01],[1936.15,44.15],[1936.363,42.57],[1938.088,54.93],[1938.353,41.76],[1938.811,43.58],[1938.89,43.14],[1938.973,46.14],[1939.066,42.31],[1939.222,42.45],[1939.408,40.68],[1939.584,41.96],[1939.732,42.77],[1939.956,42.1],[1940.137,41.3],[1940.328,41.77],[1940.492,47.1],[1940.721,48.91],[1940.765,45.4],[1940.907,43.5],[1941.074,42.22],[1941.162,41.63],[1941.255,40.65],[1941.386,41.9],[1941.512,41.56],[1941.622,48.19],[1941.715,45.14],[1941.847,42.17],[1941.962,40.7],[1942.06,40.02],[1942.34,39.07],[1942.57,55.09],[1942.71,50.2],[1942.901,42.91],[1943.055,40.49],[1943.241,39.9],[1943.321,39.3],[1943.46,56.14],[1943.578,62.81],[1943.647,66.18],[1943.74,57.13],[1943.86,47.12],[1944.082,41.88],[1944.23,40.1],[1944.413,41.06],[1944.702,61.4],[1944.951,45.66],[1945.066,42.73],[1945.2,41.59],[1945.482,66.25],[1946.044,46.64],[1946.384,47.23],[1946.518,59.32],[1946.712,71.51],[1946.962,46.78],[1947.079,44.78],[1947.195,41.72],[1947.427,65.09],[1947.707,73],[1947.956,49.97],[1948.126,45.77],[1948.443,81.86],[1948.948,59.18],[1949.11,51.68],[1949.455,82.27],[1949.715,99.92],[1949.956,57.58],[1950.088,50.93],[1950.455,66.95],[1950.74,82.09],[1950.962,58.37],[1951.153,53.4],[1951.452,91.05],[1951.71,93],[1951.962,61.5],[1952.098,57.05],[1952.462,77.28],[1952.713,108.12],[1952.997,65.07],[1953.107,59.46],[1953.458,91.9],[1953.742,104.8],[1953.959,65.34],[1954.151,58.08],[1954.471,107.36],[1954.742,65.8],[1954.97,74.71],[1955.104,63.53],[1955.466,96.47],[1955.723,85.34],[1955.953,68.1],[1956.128,62.75],[1956.451,96.11],[1956.719,101.97],[1956.948,84.11],[1957.123,69.03],[1957.444,78.09],[1957.696,93.33],[1957.948,70.69],[1958.14,64.37],[1958.441,95.7],[1958.715,89.19],[1958.942,71.39],[1959.129,65.27],[1959.444,76.95],[1959.723,81.65],[1959.992,67.49],[1960.172,63.02],[1960.456,90.44],[1960.708,80.45],[1961.118,62.35],[1961.449,84.96],[1961.721,90.92],[1961.964,68.77],[1962.115,62.18],[1962.452,87.1],[1962.748,90.41],[1963.156,65.8],[1963.46,102.02],[1963.964,80.97],[1964.178,71.52],[1964.456,97.77],[1964.724,108.03],[1964.932,90.59],[1965.123,72.38],[1965.71,113.46],[1965.937,84.7],[1966.129,73.57],[1966.723,91.45],[1967.145,73.36],[1967.945,85.31],[1968.104,77.47],[1968.956,83.57],[1969.153,75.01],[1969.751,106.84],[1969.945,89.22],[1970.156,78.44],[1970.932,88.22],[1971.115,81.12],[1971.471,123.91],[1971.71,120.9],[1972.09,82.86],[1972.418,104.79],[1972.74,123.86],[1972.934,101.53],[1973.121,82.54],[1973.433,102.94],[1973.699,111.79],[1973.923,89.37],[1974.104,83.88],[1974.466,104.87],[1974.693,118.46],[1974.94,89.6],[1975.118,82.07],[1975.441,100.19],[1975.726,112.14],[1975.995,87.48],[1976.172,83.33],[1976.434,108.82],[1976.705,121.1],[1976.915,92.68],[1977.112,82.87],[1977.411,100.7],[1977.696,106.84],[1978.411,115.04],[1978.715,113.28],[1979.038,86.43],[1979.405,90.18],[1979.674,116.63],[1980.06,86.44],[1980.497,117.38],[1980.724,122.63],[1981.038,86.88],[1981.436,101.97],[1981.666,123.2],[1982.047,88.39],[1982.668,118.4],[1983.027,87.05],[1984.044,88.26],[1985.016,88.73],[1986.014,76.54],[1987.011,73.78],[1988.011,74.86],[1989.066,80.6],[1990.019,79.13],[1991.038,78.75]]},
+  {id:"6502310", lat:29.996667, lon:-95.765001, aquifer:"Chicot Aquifer", depth:57,
+   status:"1979–1993, 48 readings, Tier B (moderate), R²=0.54", live:false, trend:"DECLINING: 2.17 ft/yr average, R²=0.54",
+   note:"Unused well. Source: TWDB Groundwater Database bulk download (retrieved Sept 2026). Trend computed directly from the full reading series, not cross-checked against a live single-well report the way 6503204 was.",
+   readings:[[1978.704,27.97],[1978.759,28.38],[1978.855,28.97],[1978.951,0.31],[1979.038,1.08],[1979.126,1.54],[1979.197,1.95],[1979.288,2.44],[1979.373,2.84],[1979.449,3.21],[1979.537,3.66],[1979.614,3.93],[1979.69,4.27],[1979.773,4.61],[1979.825,4.86],[1979.868,5.21],[1979.923,5.32],[1980.008,5.7],[1980.117,5.13],[1980.194,6.48],[1980.27,6.03],[1980.342,6.95],[1980.456,7.21],[1980.533,7.84],[1980.727,8.6],[1980.85,9.14],[1980.954,9.59],[1981.033,9.86],[1981.134,10.26],[1981.203,10.31],[1981.263,10.74],[1981.529,4.18],[1982.222,4.76],[1982.395,5.54],[1982.526,6.08],[1982.795,6.94],[1982.921,7.65],[1983.044,8.27],[1983.263,9.25],[1983.822,9.89],[1984.844,15.32],[1985.688,18.42],[1988.068,25.74],[1989.2,28.6],[1990.173,30.78],[1990.299,31.05],[1990.307,42.67],[1993.115,36.46]]},
+  // Below: not part of the full-lifetime Tier A/B ranking above (their whole-record fit is too noisy to
+  // meet the trend floor). Included separately because the identical floor rule (5+ measurements, 10+ year
+  // span, R²>=0.5), applied to just the 2000-2024 window instead of the full record, DOES pass for these three
+  // -- and all three show recovery. Reported side by side rather than picking one window as "the" answer.
+  {id:"6503907", lat:29.894445, lon:-95.642500, aquifer:"Evangeline Aquifer", depth:990, usgs:"295339095383201",
+   status:"Full lifetime: too noisy to tier (R²=0.17 over 67 readings). 2000–2024 only: 24 readings, R²=0.65, which clears the same floor rule applied to a recent window instead of the full record", live:false, trend:"RECOVERING, 2000–2024 window only: 3.50 ft/yr average, R²=0.65. Not part of the full-lifetime Tier A/B ranking above",
+   note:"Public Supply well. Included separately because it fails the paper's full-lifetime trend floor (R²<0.17) but clears the identical 5+/10yr/R²≥0.5 floor when that same rule is applied to just the post-2000 record. Source: TWDB Groundwater Database bulk download, retrieved Sept 2026.",
+   readings:[[1978.753,230],[1982.066,235.37],[1982.304,228.88],[1982.378,234.17],[1982.551,265.88],[1982.726,273.14],[1982.816,291.93],[1982.918,298.56],[1983.047,266.79],[1983.164,250.94],[1983.208,235.72],[1983.296,232.9],[1983.359,236.75],[1983.466,240.16],[1983.542,243.28],[1983.658,267.48],[1983.718,269.75],[1983.819,268.11],[1983.912,263.44],[1984.066,256.16],[1984.161,251.43],[1984.32,263.85],[1984.434,280.22],[1984.53,294.51],[1984.577,296.12],[1984.661,293.64],[1984.732,297.19],[1984.866,292.46],[1984.907,288.17],[1984.989,271.36],[1985.025,254.66],[1986.019,262.07],[1987.068,264.18],[1988.014,268.44],[1989.107,307.8],[1990.049,306.36],[1993.066,305.2],[1994.047,293.09],[1995.03,322.86],[1996.019,327.97],[1997.019,338.83],[1998.052,331.07],[1999.019,344.49],[2000.044,360.76],[2001.038,352.68],[2002.036,355.74],[2003.099,329.35],[2004.074,330.15],[2005.066,312.65],[2006.047,352.33],[2007.005,355.21],[2008.022,333.44],[2009.074,299.95],[2010.047,294.02],[2011.016,278.31],[2012.046,299.9],[2013.041,282.04],[2014.041,290.51],[2015.058,267.69],[2016.019,274.5],[2017.071,281.7],[2018.085,275.12],[2020.148,271.58],[2021.074,269.4],[2022.123,272.59],[2023.03,299],[2024.153,298.92]]},
+  {id:"6502612", lat:29.918333, lon:-95.773056, aquifer:"Chicot Aquifer", depth:565, usgs:"295505095462201",
+   status:"Full lifetime: too noisy to tier (R²=0.39 over 60 readings). 2000–2024 only: 21 readings, R²=0.56, which clears the same floor rule applied to a recent window instead of the full record", live:false, trend:"RECOVERING, 2000–2024 window only: 0.66 ft/yr average, R²=0.56. Not part of the full-lifetime Tier A/B ranking above",
+   note:"Irrigation well. Included separately because it fails the paper's full-lifetime trend floor (R²<0.39) but clears the identical 5+/10yr/R²≥0.5 floor when that same rule is applied to just the post-2000 record. Source: TWDB Groundwater Database bulk download, retrieved Sept 2026.",
+   readings:[[1964.164,90],[1969.216,88.42],[1970.175,93.01],[1971.203,98.5],[1972.15,97.6],[1973.159,100.89],[1974.175,102.34],[1975.137,104.78],[1976.164,112.29],[1977.151,99.71],[1977.907,107.89],[1978.184,101.88],[1978.858,111.1],[1979.118,115.48],[1979.912,111.45],[1980.025,107.52],[1980.921,111.67],[1981.03,109.43],[1981.847,113.04],[1982.09,112.27],[1982.819,125.44],[1983.033,114.73],[1983.742,120.04],[1984.085,116.69],[1985.025,119.57],[1986.014,115.7],[1987.011,114.64],[1988.011,116.25],[1989.079,119.14],[1990.025,118.97],[1991.038,118.76],[1992.071,117.94],[1993.066,120.76],[1994.055,121.11],[1995.014,121.05],[1996.022,119.86],[1997.019,122.14],[1998.03,120.31],[1999.011,125.24],[2000.025,132.66],[2001.011,125.3],[2002.022,138.62],[2003.082,132.1],[2004.036,130.66],[2005.063,123.14],[2006.027,120.58],[2006.962,120.53],[2008.005,119.97],[2009.06,116.42],[2010.008,116.97],[2011.005,116.83],[2012.046,118.2],[2013.044,117.29],[2013.926,117.4],[2016.03,115.26],[2020.06,116.6],[2021.074,115.69],[2022.123,118.02],[2023.027,117],[2024.104,116]]},
+  {id:"6503906", lat:29.883889, lon:-95.661112, aquifer:"Evangeline Aquifer", depth:1145, usgs:"295301095393901",
+   status:"Full lifetime: too noisy to tier (R²=0.26 over 50 readings). 2000–2024 only: 24 readings, R²=0.59, which clears the same floor rule applied to a recent window instead of the full record", live:false, trend:"RECOVERING, 2000–2024 window only: 3.48 ft/yr average, R²=0.59. Not part of the full-lifetime Tier A/B ranking above",
+   note:"Public Supply well. Included separately because it fails the paper's full-lifetime trend floor (R²<0.26) but clears the identical 5+/10yr/R²≥0.5 floor when that same rule is applied to just the post-2000 record. Source: TWDB Groundwater Database bulk download, retrieved Sept 2026.",
+   readings:[[1977.899,207],[1980.219,213.9],[1980.516,237.1],[1980.724,249.8],[1981.118,220.16],[1981.463,239.31],[1981.668,266.7],[1982.049,235.95],[1982.066,228.98],[1982.718,240.23],[1983.025,231.74],[1984.082,232.17],[1985.016,234.02],[1986.019,237.4],[1987.033,236],[1988.014,243.87],[1989.107,292],[1990.049,292.73],[1992.093,290.36],[1993.066,291.52],[1994.036,300.79],[1995.03,299.56],[1996.019,303.1],[1997.019,314],[1998.052,307.3],[1999.027,314.84],[2000.033,352.99],[2001.058,340.1],[2002.041,348.63],[2003.11,315.85],[2004.074,355.6],[2005.085,351.82],[2006.033,359.12],[2006.992,345.83],[2008.022,302.85],[2009.077,303.93],[2010.047,288.34],[2011.016,272.82],[2012.046,294.87],[2013.041,278.03],[2014.041,277.98],[2015.041,265.5],[2016.011,275.36],[2017.156,273.42],[2018.085,271.58],[2020.117,271.28],[2021.011,270.9],[2022.123,274.31],[2023.03,304],[2024.153,297.23]]}
+];
+
+// Subsidence points are approximate for stations with full-chart lines below:
+// digitized by eye from official HGSD/University of Houston PNG charts.
+// Stations with "readings:[]" show real summary stats only (start year, total displacement, 2025 rate).
+const stations = [
+  {id:"P018", lat:29.965, lon:-95.678, since:2000, totalCm:-44.1, rate2025:1.88, note:"decelerating since peaking around 2007",
+   readings:[[2000,0],[2003,-6],[2005,-11],[2007,-17],[2009,-21],[2012,-25],[2015,-29],[2018,-33],[2021,-38],[2023,-41],[2026,-44]]},
+  {id:"AULT", lat:29.998, lon:-95.745, since:2015, totalCm:-14.7, rate2025:1.87, note:"accelerating in recent years",
+   readings:[[2015,0],[2017,-2],[2019,-4],[2021,-6.5],[2023,-9.5],[2025,-13],[2026,-14.7]]},
+  {id:"P048", lat:30.045, lon:-95.672, since:2007, totalCm:-20.3, rate2025:1.28, note:"summary stats only", readings:[]},
+  {id:"P099", lat:29.986, lon:-95.579, since:2018, totalCm:-5.1, rate2025:0.89, note:"summary stats only", readings:[]},
+  {id:"CFHS", lat:29.919, lon:-95.632, since:2015, totalCm:-16.3, rate2025:1.74, note:"summary stats only", readings:[]},
+  {id:"P007", lat:29.936, lon:-95.577, since:1999, totalCm:-68.6, rate2025:1.36, note:"summary stats only; record begins 1999", readings:[]},
+  {id:"P001", lat:29.912, lon:-95.617, since:1994, totalCm:-77.3, rate2025:1.07, note:"the longest-running of the stations shown here, at 31.7 years (a few other regional stations run slightly longer)", readings:[]},
+  {id:"P046", lat:30.030, lon:-95.600, since:2007, totalCm:-27.9, rate2025:1.40, note:"summary stats only", readings:[]},
+  {id:"P044", lat:29.880, lon:-95.687, since:2007, totalCm:-24.2, rate2025:1.57, note:"summary stats only", readings:[]},
+  {id:"P017", lat:30.091, lon:-95.615, since:2000, totalCm:-43.1, rate2025:1.51, note:"summary stats only", readings:[]},
+  {id:"TXCY", lat:30.096, lon:-95.626, since:2017, totalCm:-13.3, rate2025:1.74, note:"TxDOT-operated", readings:[]},
+  {id:"MRHK", lat:29.804, lon:-95.745, since:2014, totalCm:-23.0, rate2025:2.38, note:"one of the fastest-sinking stations in the region", readings:[]}
+];
+
+const creeks = [
+  {id:"1150", name:"Cypress Creek @ SH 249", lat:29.9857, lon:-95.5699, level:92.48, floodStage:117.0, harveyFlood:null},
+  {id:"1160", name:"Cypress Creek @ Grant Road", lat:29.9735, lon:-95.5985, level:102.5, floodStage:122.2, harveyFlood:null, photoAnchor:"photos-russ-poppe"},
+  {id:"1165", name:"Cypress Creek @ Eldridge Pkwy N.", lat:29.9662, lon:-95.6073, level:103.07, floodStage:122.6, harveyFlood:"Flooding Likely", photoAnchor:"photos-cypress-park"},
+  {id:"1170", name:"Cypress Creek @ Huffmeister Road", lat:29.9616, lon:-95.6312, level:110.38, floodStage:127.5, harveyFlood:"Flooding Likely"},
+  {id:"1175", name:"Cypress Creek @ US 290", lat:29.9569, lon:-95.6782, level:120.8, floodStage:136.4, harveyFlood:null},
+  {id:"1180", name:"Cypress Creek @ Katy-Hockley Road", lat:29.9504, lon:-95.8083, level:145.85, floodStage:null, harveyFlood:null}
+];
+
+const map = L.map('map', {scrollWheelZoom:true}).setView([29.975,-95.665],12.3);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  attribution:'&copy; OpenStreetMap contributors', maxZoom:18
+}).addTo(map);
+
+function wellIcon(hasData, isLive){
+  const color = isLive ? '#C0392B' : (hasData?'#2B6777':'#B7ADA0');
+  const ring = isLive ? '0 0 0 3px rgba(192,57,43,.25)' : '0 0 0 1px rgba(0,0,0,.25)';
+  return L.divIcon({
+    className:'',
+    html:`<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:${ring};"></div>`,
+    iconSize:[14,14], iconAnchor:[7,7]
+  });
+}
+function stationIcon(){
+  return L.divIcon({
+    className:'',
+    html:`<div style="width:0;height:0;border-left:8px solid transparent;border-right:8px solid transparent;border-bottom:14px solid #AE5A28;filter:drop-shadow(0 0 1px rgba(0,0,0,.4));"></div>`,
+    iconSize:[16,14], iconAnchor:[8,12]
+  });
+}
+function creekIcon(flooded){
+  const c = flooded ? '#C0392B' : '#3E6E4A';
+  return L.divIcon({
+    className:'',
+    html:`<div style="width:12px;height:12px;background:${c};border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25);"></div>`,
+    iconSize:[12,12], iconAnchor:[6,6]
+  });
+}
+
+let chartInstance = null;
+
+function renderWellPanel(w){
+  const panel = document.getElementById('panel');
+  const has = w.readings.length > 1;
+  panel.innerHTML = `
+    <a class="back-link" onclick="renderList()">&larr; All locations</a>
+    <div class="kicker">GROUNDWATER WELL</div>
+    <h2>State Well ${w.id}${w.live?'<span class="badge-live">USGS ACTIVE SITE</span>':''}</h2>
+    <table class="meta">
+      <tr><td>Aquifer</td><td>${w.aquifer}</td></tr>
+      <tr><td>Well depth</td><td>${w.depth} ft</td></tr>
+      <tr><td>Coordinates</td><td>${w.lat.toFixed(4)}, ${w.lon.toFixed(4)}</td></tr>
+      <tr><td>Record</td><td>${w.status}</td></tr>
+      ${w.trend ? '<tr><td>Trend</td><td><b>'+w.trend+'</b></td></tr>' : ''}
+    </table>
+    ${has ? '<div class="chart-wrap"><canvas id="wellChart" height="220"></canvas></div>' :
+      '<div class="no-data">No usable water-level series for this well: construction/casing details only, or a single spot reading.</div>'}
+    ${w.note ? '<div class="note">'+w.note+'</div>' : ''}
+    ${w.live ? '<div class="note"><b>Data freshness:</b> readings shown are a snapshot pulled from USGS during this project (Sept 2026), not a real-time feed; this site does not auto-update. "USGS Active Site" means the agency is actively monitoring this well, not that this page is live.</div>' : ''}
+    ${w.photoAnchor ? '<div class="photo-cta" onclick="goToPhotos(\''+w.photoAnchor+'\')">\uD83D\uDCF7 View field photos from this site</div>' : ''}
+    <div class="note">
+      Source: TWDB Groundwater Database, <a class="src" href="https://www3.twdb.texas.gov/apps/waterdatainteractive/GetReports.aspx?Num=${w.id}&amp;Type=GWDB" target="_blank">view official well report for ${w.id}</a>
+      ${w.usgs ? '<br>'+(w.live?'USGS active site':'USGS record')+': <a class="src" href="https://waterdata.usgs.gov/monitoring-location/USGS-'+w.usgs+'/" target="_blank">USGS monitoring location '+w.usgs+'</a>' : ''}
+    </div>
+  `;
+  if (has){
+    const ctx = document.getElementById('wellChart').getContext('2d');
+    if (chartInstance) chartInstance.destroy();
+    chartInstance = new Chart(ctx, {
+      type:'line',
+      data:{ datasets:[{
+        label: w.mixedDatum ? 'Water level (ft, mixed datum)' : 'Depth to water (ft below surface)',
+        data: w.readings.map(r=>({x:r[0], y:r[1]})),
+        borderColor: w.live ? '#C0392B' : '#2B6777', backgroundColor: w.live ? '#C0392B' : '#2B6777',
+        pointRadius:3, borderWidth:1.5, tension:0, showLine:true, spanGaps:false
+      }]},
+      options:{
+        responsive:true,
+        scales:{
+          x:{ type:'linear', title:{display:true,text:'Year'}, ticks:{ callback:v=>Math.round(v) } },
+          y:{ reverse: !w.mixedDatum, title:{display:true,text: w.mixedDatum ? 'ft' : 'ft below surface'} }
+        },
+        plugins:{ legend:{display:false} }
+      }
+    });
+  }
+}
+
+function renderStationPanel(s){
+  const panel = document.getElementById('panel');
+  const has = s.readings.length > 1;
+  panel.innerHTML = `
+    <a class="back-link" onclick="renderList()">&larr; All locations</a>
+    <div class="kicker">SUBSIDENCE GPS STATION</div>
+    <h2>${s.id}</h2>
+    <table class="meta">
+      <tr><td>Monitoring since</td><td>${s.since}</td></tr>
+      <tr><td>Total displacement</td><td>${s.totalCm} cm</td></tr>
+      <tr><td>2025 rate</td><td>${s.rate2025} cm/yr</td></tr>
+      <tr><td>Coordinates</td><td>${s.lat.toFixed(4)}, ${s.lon.toFixed(4)}</td></tr>
+      <tr><td>Trend</td><td>${s.note}</td></tr>
+    </table>
+    ${has ? '<div class="chart-wrap ground"><canvas id="stChart" height="220"></canvas></div>' :
+      '<div class="no-data">Full time series not pulled for this prototype; summary stats above are real, sourced from the district\'s public feature service.</div>'}
+    ${has ? '<div class="note">Approximate: points digitized by eye from the official HGSD/University of Houston chart to show trend shape. Exact daily values: <a class="src" href="https://hgsubsidence.org/GPS/2025/'+s.id+'_GOM25_neu_cm.png" target="_blank">hgsubsidence.org</a></div>' :
+            '<div class="note">Source: HGSD AGOL_SubsRate21_25 feature service.</div>'}
+  `;
+  if (has){
+    const ctx = document.getElementById('stChart').getContext('2d');
+    if (chartInstance) chartInstance.destroy();
+    chartInstance = new Chart(ctx, {
+      type:'line',
+      data:{ datasets:[{
+        label:'Change in elevation (cm)',
+        data: s.readings.map(r=>({x:r[0], y:r[1]})),
+        borderColor:'#AE5A28', backgroundColor:'#AE5A28',
+        pointRadius:2.5, borderWidth:1.5, tension:0.15, showLine:true
+      }]},
+      options:{
+        responsive:true,
+        scales:{
+          x:{ type:'linear', title:{display:true,text:'Year'}, ticks:{ callback:v=>Math.round(v) } },
+          y:{ title:{display:true,text:'cm change'} }
+        },
+        plugins:{ legend:{display:false} }
+      }
+    });
+  }
+}
+
+function renderCreekPanel(c){
+  const panel = document.getElementById('panel');
+  panel.innerHTML = `
+    <a class="back-link" onclick="renderList()">&larr; All locations</a>
+    <div class="kicker">CYPRESS CREEK GAGE</div>
+    <h2>Gage ${c.id}</h2>
+    <table class="meta">
+      <tr><td>Location</td><td>${c.name}</td></tr>
+      <tr><td>Level (snapshot)</td><td>${c.level} ft</td></tr>
+      <tr><td>Flood stage</td><td>${c.floodStage ? c.floodStage+' ft' : 'not listed'}</td></tr>
+      <tr><td>Coordinates</td><td>${c.lat.toFixed(4)}, ${c.lon.toFixed(4)}</td></tr>
+    </table>
+    ${c.harveyFlood ? '<div class="flood-flag"><b>Hurricane Harvey, 8/31/2017 11:59 PM:</b><br>The district&#39;s own historical record shows this gage at status <b>"'+c.harveyFlood+'"</b>, confirmed active flooding at this exact location.</div>' : ''}
+    ${c.photoAnchor ? '<div class="photo-cta" onclick="goToPhotos(\''+c.photoAnchor+'\')">\uD83D\uDCF7 View field photos from this site</div>' : ''}
+    <div class="note">Source: Harris County Flood Control District, <a class="src" href="https://www.harriscountyfws.org/" target="_blank">Flood Warning System</a> (search Site ${c.id} under "Site by Location"). Levels shown are a fixed snapshot recorded from the HCFCD tool during this project, not a live feed and not the Harvey-era peak. Check the HCFCD site for current conditions.</div>
+  `;
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+}
+
+const wellMarkers = {}, stationMarkers = {}, creekMarkers = {};
+
+wells.forEach(w=>{
+  const hasData = w.readings.length > 1;
+  const marker = L.marker([w.lat,w.lon], {icon:wellIcon(hasData, w.live)})
+    .addTo(map)
+    .bindPopup(`<b>Well ${w.id}${w.live?' (USGS active site)':''}</b>${w.aquifer} · ${w.depth} ft`)
+    .on('click', ()=>renderWellPanel(w));
+  wellMarkers[w.id] = marker;
+});
+
+stations.forEach(s=>{
+  const marker = L.marker([s.lat,s.lon], {icon:stationIcon()})
+    .addTo(map)
+    .bindPopup(`<b>${s.id}</b>${s.totalCm} cm since ${s.since}`)
+    .on('click', ()=>renderStationPanel(s));
+  stationMarkers[s.id] = marker;
+});
+
+creeks.forEach(c=>{
+  const marker = L.marker([c.lat,c.lon], {icon:creekIcon(!!c.harveyFlood)})
+    .addTo(map)
+    .bindPopup(`<b>${c.name}</b>${c.level} ft${c.harveyFlood?' · Harvey: '+c.harveyFlood:''}`)
+    .on('click', ()=>renderCreekPanel(c));
+  creekMarkers[c.id] = marker;
+});
+
+function goToPhotos(anchorId){
+  showTab('evidence');
+  setTimeout(()=>{
+    const el = document.getElementById(anchorId);
+    if (el) el.scrollIntoView({behavior:'smooth', block:'center'});
+  }, 100);
+}
+
+function renderList(){
+  const panel = document.getElementById('panel');
+  if (chartInstance) { chartInstance.destroy(); chartInstance = null; }
+
+  let html = `
+    <div class="kicker">ALL LOCATIONS</div>
+    <h2>Cypress Data Explorer</h2>
+    <div class="note" style="margin:8px 0 4px;">Click any item below, or a marker on the map, to see its data. \uD83D\uDCF7 next to an item means real field photos are available for it.</div>
+  `;
+
+  html += `<div class="loc-group-title" style="color:var(--water)">WELLS (${wells.length})</div>`;
+  wells.forEach(w=>{
+    const hasData = w.readings.length > 1;
+    const color = w.live ? '#C0392B' : (hasData ? '#2B6777' : '#B7ADA0');
+    html += `<div class="loc-item" data-type="well" data-id="${w.id}">
+      <span class="loc-dot" style="background:${color}"></span>
+      <span>Well ${w.id}${w.live?' <span class="badge-live" style="font-size:0.55rem;padding:1px 5px;">USGS ACTIVE</span>':''}${w.photoAnchor?' <span class="photo-badge" data-anchor="'+w.photoAnchor+'" title="Field photos available">\uD83D\uDCF7</span>':''}</span>
+      <span class="loc-sub">${w.aquifer}${w.trend ? ' · ' + w.trend.split(': ')[0] : ''}</span>
+    </div>`;
+  });
+
+  html += `<div class="loc-group-title" style="color:var(--ground)">SUBSIDENCE STATIONS (${stations.length})</div>`;
+  stations.forEach(s=>{
+    html += `<div class="loc-item" data-type="station" data-id="${s.id}">
+      <span class="loc-dot loc-tri"></span>
+      <span>${s.id}</span>
+      <span class="loc-sub">${s.totalCm} cm since ${s.since}</span>
+    </div>`;
+  });
+
+  html += `<div class="loc-group-title" style="color:var(--creek)">CREEK GAGES (${creeks.length})</div>`;
+  creeks.forEach(c=>{
+    const color = c.harveyFlood ? '#C0392B' : '#3E6E4A';
+    html += `<div class="loc-item" data-type="creek" data-id="${c.id}">
+      <span class="loc-dot" style="background:${color}"></span>
+      <span>${c.name}${c.photoAnchor?' <span class="photo-badge" data-anchor="'+c.photoAnchor+'" title="Field photos available">\uD83D\uDCF7</span>':''}</span>
+      <span class="loc-sub">${c.harveyFlood ? 'Harvey: flooded' : c.level + ' ft'}</span>
+    </div>`;
+  });
+
+  panel.innerHTML = html;
+
+  panel.querySelectorAll('.photo-badge').forEach(badge=>{
+    badge.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      goToPhotos(badge.dataset.anchor);
+    });
+  });
+
+  panel.querySelectorAll('.loc-item').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const type = el.dataset.type, id = el.dataset.id;
+      let marker, data;
+      if (type === 'well') { data = wells.find(x=>x.id===id); marker = wellMarkers[id]; renderWellPanel(data); }
+      else if (type === 'station') { data = stations.find(x=>x.id===id); marker = stationMarkers[id]; renderStationPanel(data); }
+      else { data = creeks.find(x=>x.id===id); marker = creekMarkers[id]; renderCreekPanel(data); }
+      map.panTo(marker.getLatLng());
+      marker.openPopup();
+    });
+  });
+}
+
+renderList();
+
+// ---- Evidence for Thesis tab ----
+let timelineChartInstance = null;
+let stationCompareChartInstance = null;
+let evidenceChartsBuilt = false;
+
+function showTab(tab){
+  const mapMain = document.getElementById('mapMain');
+  const evidence = document.getElementById('evidence');
+  const paper = document.getElementById('paper');
+  const mapBtn = document.getElementById('tabMapBtn');
+  const evBtn = document.getElementById('tabEvidenceBtn');
+  const paperBtn = document.getElementById('tabPaperBtn');
+
+  mapMain.style.display = 'none';
+  evidence.style.display = 'none';
+  paper.style.display = 'none';
+  mapBtn.classList.remove('active');
+  evBtn.classList.remove('active');
+  paperBtn.classList.remove('active');
+
+  if (tab === 'map'){
+    mapMain.style.display = 'grid';
+    mapBtn.classList.add('active');
+    setTimeout(()=>map.invalidateSize(), 50);
+  } else if (tab === 'evidence'){
+    evidence.style.display = 'block';
+    evBtn.classList.add('active');
+    if (!evidenceChartsBuilt) buildEvidenceCharts();
+  } else if (tab === 'paper'){
+    paper.style.display = 'block';
+    paperBtn.classList.add('active');
+  }
+}
+
+function buildEvidenceCharts(){
+  evidenceChartsBuilt = true;
+
+  // Real combined FEMA NFIP claims for zip 77433 + 77429, by year of loss.
+  // Source: OpenFEMA FimaNfipClaims API. 77429 query hit the 1,000-record API cap,
+  // so later years for that zip may be undercounted; 77433 is a complete pull.
+  const femaYears  = ["1978","1979","1980","1981","1982","1983","1984","1985","1986","1987","1989","1991",
+                       "1994","1997","1998","2000","2001","2002","2004","2006","2007","2008","2009","2010",
+                       "2011","2012","2013","2014","2015","2016","2017","2018","2019","2020","2021","2023","2024"];
+  const femaClaims = [1,17,2,2,4,5,1,3,1,10,5,4,56,2,80,1,79,4,6,5,3,23,42,1,1,43,1,4,3,287,735,2,1,7,8,5,6];
+
+  new Chart(document.getElementById('femaChart').getContext('2d'), {
+    type:'bar',
+    data:{
+      labels: femaYears,
+      datasets:[{ label:'Combined flood insurance claims (77429 + 77433)', data: femaClaims, backgroundColor:'#C0392B' }]
+    },
+    options:{
+      responsive:true,
+      scales:{ y:{ title:{display:true,text:'Claims filed'} } },
+      plugins:{ legend:{display:false} }
+    }
+  });
+
+  // Chart 1: coverage over time on the zip-code boundary (77429/77433). Every series below is
+  // regenerated from TWDB's raw water-level file (harris_levels.psv) by point-in-polygon against
+  // the Census ZCTA boundaries. This pipeline reproduces the inventory's published totals exactly
+  // (125 wells in the two zip codes, 85 with a water-level row, 1,572 measurements) and reproduces
+  // the published trend-bearing series for both the zip and grid boundaries, all 40 years, exactly.
+  // Trend-bearing rule, now stated explicitly in Methods: 5+ measurements over a 10+ year span,
+  // evenly spread (largest gap between consecutive measurement years no more than twice the mean
+  // gap), and the well's record span brackets the year. No R-squared term is involved.
+  const years = ['1985', '1986', '1987', '1988', '1989', '1990', '1991', '1992', '1993', '1994', '1995', '1996', '1997', '1998', '1999', '2000', '2001', '2002', '2003', '2004', '2005', '2006', '2007', '2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017', '2018', '2019', '2020', '2021', '2022', '2023', '2024'];
+  const wellsMeasured =    [14, 8, 10, 10, 12, 14, 11, 11, 13, 12, 11, 11, 10, 11, 10, 9, 10, 10, 12, 12, 14, 9, 1, 9, 9, 11, 9, 8, 6, 1, 2, 3, 5, 3, 4, 7, 8, 7, 5, 5];
+  const wellsActive =      [7, 3, 3, 3, 5, 5, 5, 5, 5, 5, 5, 5, 4, 5, 5, 5, 5, 5, 6, 6, 4, 4, 4, 4, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2];
+  const stationsActive =   [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 4, 4, 4, 4, 4, 4, 4, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8];
+
+  new Chart(document.getElementById('timelineChart').getContext('2d'), {
+    type:'line',
+    data:{
+      labels: years,
+      datasets:[
+        { label:'Wells measured at least once', data: wellsMeasured, borderColor:'#9BB7BE', backgroundColor:'#9BB7BE', borderDash:[5,4], tension:0.2 },
+        { label:'Trend-bearing wells', data: wellsActive, borderColor:'#2B6777', backgroundColor:'#2B6777', tension:0.2 },
+        { label:'Subsidence stations active', data: stationsActive, borderColor:'#AE5A28', backgroundColor:'#AE5A28', tension:0.2 }
+      ]
+    },
+    options:{
+      responsive:true,
+      scales:{ y:{ title:{display:true,text:'Count of monitoring points active'} } },
+      plugins:{ legend:{display:true, position:'bottom', labels:{boxWidth:12, font:{size:10}}} }
+    }
+  });
+
+  // Chart 2: P018 vs AULT direct comparison
+  const p018 = stations.find(s=>s.id==='P018');
+  const ault = stations.find(s=>s.id==='AULT');
+
+  new Chart(document.getElementById('stationCompareChart').getContext('2d'), {
+    type:'line',
+    data:{
+      datasets:[
+        { label:'P018 (since 2000): decelerating', data: p018.readings.map(r=>({x:r[0],y:r[1]})), borderColor:'#AE5A28', backgroundColor:'#AE5A28', pointRadius:3, borderWidth:1.5, showLine:true },
+        { label:'AULT (since 2015): accelerating', data: ault.readings.map(r=>({x:r[0],y:r[1]})), borderColor:'#C0392B', backgroundColor:'#C0392B', pointRadius:3, borderWidth:1.5, showLine:true }
+      ]
+    },
+    options:{
+      responsive:true,
+      scales:{
+        x:{ type:'linear', title:{display:true,text:'Year'}, ticks:{callback:v=>Math.round(v)} },
+        y:{ title:{display:true,text:'cm change'} }
+      },
+      plugins:{ legend:{display:true, position:'bottom', labels:{boxWidth:12, font:{size:10}}} }
+    }
+  });
+}
+
+// ---- Photo lightbox ----
+function openLightbox(src, caption){
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightboxCaption').textContent = caption || '';
+  document.getElementById('lightbox').classList.add('open');
+}
+function closeLightbox(){
+  document.getElementById('lightbox').classList.remove('open');
+}
+document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape') closeLightbox(); });
+
+document.querySelectorAll('.photo-gallery img').forEach(img=>{
+  img.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    const caption = img.closest('figure').querySelector('figcaption');
+    openLightbox(img.src, caption ? caption.textContent : '');
+  });
+});
+</script>
+</body>
+</html>
